@@ -10,6 +10,7 @@ import ApiKeyModal from "./ApiKeyModal";
 import Image from "next/image";
 import { KeyRound, History, Check, CircleDot, Circle, Trash2, Clock, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Tooltip from "./Tooltip";
 
 export type AppStep = "import" | "processing" | "editor";
 
@@ -37,13 +38,13 @@ const pageVariants = {
         opacity: 1,
         scale: 1,
         filter: "blur(0px)",
-        transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
+        transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const },
     },
     exit: {
         opacity: 0,
         scale: 0.97,
         filter: "blur(6px)",
-        transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] },
+        transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] as const },
     },
 };
 
@@ -209,20 +210,22 @@ export default function SubStudioApp() {
                     </div>
                 </div>
 
-                {/* Center — Step Indicator (absolutely centered) */}
+                {/* Center — Step Indicator */}
                 <AnimatePresence>
                     {step !== "import" && (
-                        <motion.div
-                            initial={{ opacity: 0, y: -8, scale: 0.95 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: -8, scale: 0.95 }}
-                            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                            className="hidden md:flex items-center gap-1 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-                        >
-                            <NavStepPill current={step} target="processing" label="Transcribe" />
-                            <div className="w-4 h-px bg-border/60 mx-0.5" />
-                            <NavStepPill current={step} target="editor" label="Edit & Export" />
-                        </motion.div>
+                        <div className="hidden md:flex absolute inset-0 items-center justify-center pointer-events-none">
+                            <motion.div
+                                initial={{ opacity: 0, y: -8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -8 }}
+                                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] as const }}
+                                className="flex items-center gap-1 pointer-events-auto"
+                            >
+                                <NavStepPill current={step} target="processing" label="Transcribe" />
+                                <div className="w-4 h-px bg-border/60 mx-0.5" />
+                                <NavStepPill current={step} target="editor" label="Edit & Export" />
+                            </motion.div>
+                        </div>
                     )}
                 </AnimatePresence>
 
@@ -231,33 +234,35 @@ export default function SubStudioApp() {
                     {/* New Generation button — only on editor step */}
                     <AnimatePresence>
                         {step === "editor" && (
-                            <motion.button
-                                initial={{ opacity: 0, scale: 0.8 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.8 }}
-                                transition={{ duration: 0.2 }}
-                                onClick={resetApp}
-                                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all duration-200"
-                                title="New Generation"
-                            >
-                                <Plus className="w-[18px] h-[18px]" />
-                            </motion.button>
+                            <Tooltip label="New Generation">
+                                <motion.button
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.8 }}
+                                    transition={{ duration: 0.2 }}
+                                    onClick={resetApp}
+                                    className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all duration-200"
+                                >
+                                    <Plus className="w-[18px] h-[18px]" />
+                                </motion.button>
+                            </Tooltip>
                         )}
                     </AnimatePresence>
                     {/* History Dropdown */}
                     <div className="relative" ref={historyRef}>
-                        <button
-                            onClick={() => setIsHistoryOpen(!isHistoryOpen)}
-                            className={cn(
-                                "p-2 rounded-lg transition-all duration-200",
-                                isHistoryOpen
-                                    ? "text-foreground bg-muted shadow-sm"
-                                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                            )}
-                            title="Upload History"
-                        >
-                            <History className="w-[18px] h-[18px]" />
-                        </button>
+                        <Tooltip label="Upload History">
+                            <button
+                                onClick={() => setIsHistoryOpen(!isHistoryOpen)}
+                                className={cn(
+                                    "p-2 rounded-lg transition-all duration-200",
+                                    isHistoryOpen
+                                        ? "text-foreground bg-muted shadow-sm"
+                                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                                )}
+                            >
+                                <History className="w-[18px] h-[18px]" />
+                            </button>
+                        </Tooltip>
 
                         <AnimatePresence>
                             {isHistoryOpen && (
@@ -320,27 +325,28 @@ export default function SubStudioApp() {
                         </AnimatePresence>
                     </div>
 
-                    <button
-                        onClick={() => setIsApiKeyOpen(true)}
-                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-lg transition-all duration-200"
-                        title="API Key Settings"
-                    >
-                        <KeyRound className="w-[18px] h-[18px]" />
-                    </button>
+                    <Tooltip label="API Key Settings">
+                        <button
+                            onClick={() => setIsApiKeyOpen(true)}
+                            className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-lg transition-all duration-200"
+                        >
+                            <KeyRound className="w-[18px] h-[18px]" />
+                        </button>
+                    </Tooltip>
 
-                    {/* GitHub Stars Button */}
-                    <a
-                        href="https://github.com/togethercomputer/substudio"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/60 bg-muted/30 hover:bg-muted/60 hover:border-border transition-all duration-200 group"
-                        title="View on GitHub"
-                    >
-                        <svg viewBox="0 0 16 16" className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" fill="currentColor">
-                            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
-                        </svg>
-                        <span className="text-xs font-semibold text-muted-foreground group-hover:text-foreground transition-colors hidden sm:inline">GitHub</span>
-                    </a>
+                    <Tooltip label="Star on GitHub">
+                        <a
+                            href="https://github.com/togethercomputer/substudio"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/60 bg-muted/30 hover:bg-muted/60 hover:border-border transition-all duration-200 group"
+                        >
+                            <svg viewBox="0 0 16 16" className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" fill="currentColor">
+                                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+                            </svg>
+                            <span className="text-xs font-semibold text-muted-foreground group-hover:text-foreground transition-colors hidden sm:inline">GitHub</span>
+                        </a>
+                    </Tooltip>
                 </div>
             </motion.header>
 
@@ -407,35 +413,37 @@ export default function SubStudioApp() {
             {/* Together AI Toast — Only during processing */}
             <AnimatePresence>
                 {step === "processing" && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                        className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40"
-                    >
-                        <button
-                            onClick={cycleTip}
-                            className="group flex items-center gap-2.5 bg-card/90 backdrop-blur-xl border border-border/60 shadow-lg hover:shadow-xl px-4 py-2.5 rounded-full transition-all duration-300 hover:border-border cursor-pointer"
+                    <div className="fixed bottom-5 left-0 right-0 z-40 flex justify-center pointer-events-none">
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 20 }}
+                            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] as const }}
+                            className="pointer-events-auto"
                         >
-                            <Image
-                                src="/together-logo-solo.svg"
-                                alt="Together AI"
-                                width={16}
-                                height={16}
-                                className="shrink-0 opacity-70 group-hover:opacity-100 transition-opacity"
-                                style={{ height: 'auto' }}
-                            />
-                            <span
-                                className={cn(
-                                    "text-xs font-medium text-muted-foreground group-hover:text-foreground whitespace-nowrap transition-all duration-300",
-                                    tipVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
-                                )}
+                            <button
+                                onClick={cycleTip}
+                                className="group flex items-center gap-2.5 bg-card/90 backdrop-blur-xl border border-border/60 shadow-lg hover:shadow-xl px-4 py-2.5 rounded-full transition-all duration-300 hover:border-border cursor-pointer"
                             >
-                                {TOGETHER_TIPS[tipIndex]}
-                            </span>
-                        </button>
-                    </motion.div>
+                                <Image
+                                    src="/together-logo-solo.svg"
+                                    alt="Together AI"
+                                    width={16}
+                                    height={16}
+                                    className="shrink-0 opacity-70 group-hover:opacity-100 transition-opacity"
+                                    style={{ height: 'auto' }}
+                                />
+                                <span
+                                    className={cn(
+                                        "text-xs font-medium text-muted-foreground group-hover:text-foreground whitespace-nowrap transition-all duration-300",
+                                        tipVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+                                    )}
+                                >
+                                    {TOGETHER_TIPS[tipIndex]}
+                                </span>
+                            </button>
+                        </motion.div>
+                    </div>
                 )}
             </AnimatePresence>
 

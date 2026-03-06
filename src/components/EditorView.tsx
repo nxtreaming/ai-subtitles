@@ -422,8 +422,7 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
                     <div className="flex items-center gap-3">
                         <motion.button
                             onClick={onNewProject}
-                            whileHover={{ scale: 1.04 }}
-                            whileTap={{ scale: 0.96 }}
+                            whileTap={{ scale: 0.97 }}
                             className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
                         >
                             <Plus className="w-4 h-4" /> New
@@ -449,9 +448,7 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
                     <div className="relative" ref={exportRef}>
                         <motion.button
                             onClick={() => setIsExportOpen(!isExportOpen)}
-                            whileHover={{ scale: 1.03 }}
-                            whileTap={{ scale: 0.97 }}
-                            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                            whileTap={{ scale: 0.98 }}
                             className={cn(
                                 "text-sm px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-all",
                                 isExportOpen

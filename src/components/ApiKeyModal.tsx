@@ -46,7 +46,6 @@ export default function ApiKeyModal({ isOpen, onClose }: { isOpen: boolean; onCl
                     >
                         <motion.button
                             onClick={onClose}
-                            whileHover={{ scale: 1.1, rotate: 90 }}
                             whileTap={{ scale: 0.9 }}
                             transition={{ type: "spring", stiffness: 400, damping: 17 }}
                             className="absolute right-4 top-4 text-muted-foreground hover:text-foreground transition-colors"
@@ -90,9 +89,7 @@ export default function ApiKeyModal({ isOpen, onClose }: { isOpen: boolean; onCl
                             <motion.button
                                 onClick={handleSave}
                                 disabled={saved}
-                                whileHover={{ scale: saved ? 1 : 1.02 }}
                                 whileTap={{ scale: saved ? 1 : 0.98 }}
-                                transition={{ type: "spring", stiffness: 400, damping: 17 }}
                                 className="w-full bg-foreground text-background hover:opacity-90 px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium transition-all disabled:opacity-50"
                             >
                                 <AnimatePresence mode="wait">

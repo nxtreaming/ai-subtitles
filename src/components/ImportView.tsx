@@ -24,7 +24,7 @@ const childFadeUp = {
     visible: {
         opacity: 1,
         y: 0,
-        transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] },
+        transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as const },
     },
 };
 
@@ -34,7 +34,7 @@ const cardZoomIn = {
         opacity: 1,
         scale: 1,
         y: 0,
-        transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
+        transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as const },
     },
 };
 
@@ -191,9 +191,7 @@ export default function ImportView({ onNext, setVideoFile, setYoutubeUrl }: Impo
                                     <motion.button
                                         type="submit"
                                         disabled={!url.trim()}
-                                        whileHover={{ scale: 1.03 }}
-                                        whileTap={{ scale: 0.97 }}
-                                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                                        whileTap={{ scale: 0.98 }}
                                         className="bg-foreground text-background px-8 py-3.5 rounded-xl font-medium hover:shadow-lg transition-shadow disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center sm:w-auto w-full gap-2"
                                     >
                                         Import <ArrowRight className="w-4 h-4" />
@@ -222,9 +220,7 @@ export default function ImportView({ onNext, setVideoFile, setYoutubeUrl }: Impo
                             setVideoFile(null);
                             onNext();
                         }}
-                        whileHover={{ scale: 1.04 }}
-                        whileTap={{ scale: 0.97 }}
-                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                        whileTap={{ scale: 0.98 }}
                         className="text-sm font-medium text-muted-foreground hover:text-foreground inline-flex items-center gap-2 transition-colors border border-transparent hover:border-border hover:bg-muted/50 px-4 py-2 rounded-full relative z-20"
                     >
                         <FileVideo className="w-4 h-4" />
@@ -240,7 +236,7 @@ export default function ImportView({ onNext, setVideoFile, setYoutubeUrl }: Impo
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: "-80px" }}
-                    transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                    transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] as const }}
                     className="text-center mb-16"
                 >
                     <h2 className="text-3xl font-bold tracking-tight mb-4">Everything you need</h2>
@@ -288,7 +284,7 @@ function FeatureCard({ icon, title, description }: { icon: React.ReactNode, titl
                 visible: {
                     opacity: 1,
                     y: 0,
-                    transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] },
+                    transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as const },
                 },
             }}
             whileHover={{ y: -4, transition: { duration: 0.25 } }}
