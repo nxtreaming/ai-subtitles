@@ -218,16 +218,30 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
                 });
 
                 if (!res.ok) {
-                    const data = await res.json();
-                    throw new Error(data.error || "Failed to render video");
+                    let errorMessage = "Failed to render video";
+                    try {
+                        const data = await res.json();
+                        if (data.error) errorMessage = data.error;
+                    } catch {
+                        errorMessage = `Server error: ${res.status} ${res.statusText}`;
+                    }
+                    throw new Error(errorMessage);
                 }
 
-                const data = await res.json();
+                // In production, burn API returns the video file directly as a stream
+                // In dev, it returns JSON with an outputUrl
+                const contentType = res.headers.get("content-type") || "";
+                let blob: Blob;
 
-                // Download the burned video as a blob to ensure the browser saves it as a file
-                const videoRes = await fetch(data.outputUrl);
-                if (!videoRes.ok) throw new Error("Failed to fetch rendered video");
-                const blob = await videoRes.blob();
+                if (contentType.includes("video/")) {
+                    blob = await res.blob();
+                } else {
+                    const data = await res.json();
+                    const videoRes = await fetch(data.outputUrl);
+                    if (!videoRes.ok) throw new Error("Failed to fetch rendered video");
+                    blob = await videoRes.blob();
+                }
+
                 const blobUrl = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = blobUrl;
@@ -248,7 +262,7 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
         }
     };
 
-    const videoUrl = jobId ? `/temp/${jobId}.mp4` : '';
+    const videoUrl = jobId ? `/api/video?jobId=${jobId}` : '';
 
     // --- Style-dependent subtitle rendering ---
     const renderSubtitleOverlay = () => {

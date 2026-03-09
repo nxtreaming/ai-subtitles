@@ -4,10 +4,14 @@ import { downloadYoutubeVideo } from '@/lib/video-utils';
 import fs from 'fs';
 import path from 'path';
 
+export const maxDuration = 300; // 5 mins max for downloads
+
 export async function POST(req: NextRequest) {
     try {
         const jobId = uuidv4();
-        const baseTempDir = path.join(process.cwd(), 'public', 'temp');
+        const baseTempDir = process.env.NODE_ENV === 'production'
+            ? path.join('/tmp', 'substudio')
+            : path.join(process.cwd(), 'public', 'temp');
 
         // Ensure /public/temp directory exists
         if (!fs.existsSync(baseTempDir)) {

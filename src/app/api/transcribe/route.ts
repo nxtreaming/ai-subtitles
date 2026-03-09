@@ -20,7 +20,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'No API key provided locally or in .env' }, { status: 401 });
         }
 
-        const baseTempDir = path.join(process.cwd(), 'public', 'temp');
+        const baseTempDir = process.env.NODE_ENV === 'production'
+            ? path.join('/tmp', 'substudio')
+            : path.join(process.cwd(), 'public', 'temp');
         const videoPath = path.join(baseTempDir, `${jobId}.mp4`);
         const audioPath = path.join(baseTempDir, `${jobId}.mp3`);
 

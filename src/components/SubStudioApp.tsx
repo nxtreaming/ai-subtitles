@@ -186,7 +186,7 @@ export default function SubStudioApp() {
                         <div className="w-7 h-7 flex items-center justify-center">
                             <Logo />
                         </div>
-                        <h1 className="text-[15px] tracking-tight" style={{ fontFamily: "var(--font-outfit), 'Inter', sans-serif", fontWeight: 500 }}>SubStudio</h1>
+                        <h1 className="text-[17px] tracking-tight" style={{ fontFamily: "var(--font-outfit), 'Inter', sans-serif", fontWeight: 500 }}>SubStudio</h1>
                     </button>
 
                     {/* Separator + Together AI logo */}

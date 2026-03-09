@@ -14,7 +14,10 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'No jobId provided' }, { status: 400 });
         }
 
-        const baseTempDir = path.join(process.cwd(), 'public', 'temp');
+        const isProduction = process.env.NODE_ENV === 'production';
+        const baseTempDir = isProduction
+            ? path.join('/tmp', 'substudio')
+            : path.join(process.cwd(), 'public', 'temp');
         const videoPath = path.join(baseTempDir, `${jobId}.mp4`);
         const srtPath = path.join(baseTempDir, `${jobId}.srt`);
         const outputPath = path.join(baseTempDir, `${jobId}_burned.mp4`);
@@ -34,6 +37,17 @@ export async function POST(req: NextRequest) {
         console.log(`Burning subtitles for ${jobId}...`);
         await burnSubtitles(videoPath, srtPath, outputPath);
         console.log(`Finished burning subtitles for ${jobId}. Output saved to ${outputPath}`);
+
+        if (isProduction) {
+            // In production (/tmp is not publicly served), stream the file back
+            const fileBuffer = fs.readFileSync(outputPath);
+            return new NextResponse(fileBuffer, {
+                headers: {
+                    'Content-Type': 'video/mp4',
+                    'Content-Disposition': `attachment; filename="${jobId}_burned.mp4"`,
+                },
+            });
+        }
 
         return NextResponse.json({
             jobId,
