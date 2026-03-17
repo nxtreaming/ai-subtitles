@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { KeyRound, X, CheckCircle2 } from "lucide-react";
+import { KeyRound, X, CheckCircle2, ExternalLink } from "lucide-react";
 
 export default function ApiKeyModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
     const [apiKey, setApiKey] = useState("");
@@ -84,6 +84,15 @@ export default function ApiKeyModal({ isOpen, onClose }: { isOpen: boolean; onCl
                                 <p className="text-xs text-muted-foreground">
                                     Your key is stored locally in your browser and never sent anywhere else.
                                 </p>
+                                <a
+                                    href="https://api.together.ai/settings/api-keys"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors mt-1"
+                                >
+                                    Get your API key from Together AI
+                                    <ExternalLink className="w-3 h-3" />
+                                </a>
                             </div>
 
                             <motion.button

@@ -113,6 +113,13 @@ export default function SubtitleSimulator() {
                 setTypingCard(null);
                 setShowExport(false);
                 setExportChecks([]);
+            } else {
+                // On subsequent cycles, ensure cards and playback are always active
+                setCardsVisible(DEMO_SUBS.length);
+                setIsPlaying(true);
+                setShowExport(false);
+                setExportChecks([]);
+                setProgress(0);
             }
 
             let t = isFirst ? PHASE_BOOT : 200;
@@ -353,9 +360,9 @@ export default function SubtitleSimulator() {
             </div>
 
             {/* ── Editor layout ── */}
-            <div className="flex flex-col sm:flex-row" style={{ minHeight: 280 }}>
+            <div className="flex flex-col sm:flex-row" style={{ height: 480 }}>
                 {/* Left: Video player area */}
-                <div className="sm:flex-[3] flex flex-col border-b sm:border-b-0 sm:border-r border-border/30" style={{ minHeight: 200 }}>
+                <div className="sm:flex-[3] flex flex-col border-b sm:border-b-0 sm:border-r border-border/30">
                     {/* Video viewport */}
                     <div className="flex-1 bg-black relative flex items-center justify-center overflow-hidden">
                         {/* Cinematic gradient background */}
@@ -465,7 +472,7 @@ export default function SubtitleSimulator() {
                 </div>
 
                 {/* Right: Subtitle panel — hidden on mobile */}
-                <div className="hidden sm:flex sm:flex-[2] flex-col bg-background/40 min-w-0">
+                <div className="hidden sm:flex sm:flex-[2] flex-col bg-background/40 min-w-0 overflow-hidden">
                     {/* Editor toolbar */}
                     <div className="border-b border-border/30 bg-card/40">
                         <div className="flex items-center justify-between px-3 sm:px-4 py-2.5">
@@ -571,7 +578,7 @@ export default function SubtitleSimulator() {
                     </div>
 
                     {/* Subtitle cards */}
-                    <div className="flex-1 overflow-hidden p-2 sm:p-3 space-y-1.5 sm:space-y-2">
+                    <div className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-1.5 sm:space-y-2">
                         {DEMO_SUBS.map((sub, i) => (
                             <AnimatePresence key={sub.id}>
                                 {i < cardsVisible && (

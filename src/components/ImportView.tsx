@@ -1,8 +1,9 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useDropzone } from "react-dropzone";
 import { motion } from "framer-motion";
-import { UploadCloud, Link as LinkIcon, FileVideo, ArrowRight, Zap, Target, Palette } from "lucide-react";
+import { UploadCloud, Link as LinkIcon, FileVideo, ArrowRight, ArrowUp, Zap, Target, Palette, Github } from "lucide-react";
 import SubtitleSimulator from "./SubtitleSimulator";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 
@@ -26,6 +27,23 @@ const childFadeUp = {
         opacity: 1,
         y: 0,
         transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as const },
+    },
+};
+
+const headlineStagger = {
+    hidden: {},
+    visible: {
+        transition: { staggerChildren: 0.1, delayChildren: 0.25 },
+    },
+};
+
+const headlineChild = {
+    hidden: { opacity: 0, y: 24, filter: "blur(6px)" },
+    visible: {
+        opacity: 1,
+        y: 0,
+        filter: "blur(0px)",
+        transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1] as const },
     },
 };
 
@@ -70,6 +88,11 @@ const STATS = [
 export default function ImportView({ onNext, setVideoFile, setYoutubeUrl }: ImportViewProps) {
     const [url, setUrl] = useState("");
     const [error, setError] = useState("");
+    const heroRef = useRef<HTMLDivElement>(null);
+
+    const scrollToHero = () => {
+        heroRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    };
 
     const onDrop = useCallback((acceptedFiles: File[]) => {
         if (acceptedFiles.length > 0) {
@@ -111,7 +134,7 @@ export default function ImportView({ onNext, setVideoFile, setYoutubeUrl }: Impo
     };
 
     return (
-        <div className="flex-1 w-full pb-20">
+        <div className="flex-1 w-full pb-0">
             {/* Background effects — floating blobs */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
                 <div
@@ -157,24 +180,38 @@ export default function ImportView({ onNext, setVideoFile, setYoutubeUrl }: Impo
                     <span>Groq · Whisper · word-level precision</span>
                 </motion.div>
 
-                {/* Hero text */}
+                {/* Hero text — staggered headline entrance */}
                 <motion.div
-                    variants={childFadeUp}
-                    className="text-center space-y-3 max-w-2xl mb-10"
+                    variants={headlineStagger}
+                    initial="hidden"
+                    animate="visible"
+                    className="text-center max-w-2xl mb-10"
                 >
-                    <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">
-                        Perfect subtitles, <br className="hidden md:block" />
-                        <span className="text-primary mt-1 inline-block">
+                    <motion.h1
+                        variants={headlineChild}
+                        className="text-4xl md:text-5xl lg:text-[3.4rem] font-bold tracking-tight text-foreground leading-[1.15]"
+                    >
+                        Perfect subtitles,
+                    </motion.h1>
+                    <motion.h1
+                        variants={headlineChild}
+                        className="text-4xl md:text-5xl lg:text-[3.4rem] font-bold tracking-tight leading-[1.15] mt-1"
+                    >
+                        <span className="hero-gradient-text">
                             zero effort.
                         </span>
-                    </h1>
-                    <p className="text-muted-foreground text-lg mt-3 font-light">
+                    </motion.h1>
+                    <motion.p
+                        variants={headlineChild}
+                        className="text-muted-foreground text-lg mt-5 font-light max-w-lg mx-auto"
+                    >
                         Upload your video or paste a YouTube link. Our AI handles the transcription, alignment, and styling instantly.
-                    </p>
+                    </motion.p>
                 </motion.div>
 
                 {/* Upload card */}
                 <motion.div
+                    ref={heroRef}
                     variants={cardZoomIn}
                     className="w-full max-w-2xl bg-card border border-border rounded-2xl shadow-2xl p-2"
                 >
@@ -339,6 +376,76 @@ export default function ImportView({ onNext, setVideoFile, setYoutubeUrl }: Impo
                     </div>
                 </motion.div>
             </div>
+
+            {/* ── CTA Section ── */}
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 py-20 sm:py-28 relative z-10 border-t border-border/50">
+                <motion.div
+                    initial={{ opacity: 0, y: 24 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-80px" }}
+                    transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                    className="flex flex-col items-center text-center"
+                >
+                    <span className="font-mono text-[11px] tracking-[0.2em] uppercase text-muted-foreground/40 mb-4">
+                        get started
+                    </span>
+                    <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">
+                        Ready to caption your next video?
+                    </h2>
+                    <p className="text-muted-foreground text-sm sm:text-base max-w-md mb-8">
+                        Drop a file or paste a link — subtitles in seconds, not hours.
+                    </p>
+                    <motion.button
+                        onClick={scrollToHero}
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="group inline-flex items-center gap-2.5 bg-foreground text-background px-7 py-3.5 rounded-full font-semibold text-sm shadow-lg hover:shadow-xl transition-shadow duration-300"
+                    >
+                        Get Started — Free
+                        <ArrowUp className="w-4 h-4 transition-transform duration-300 group-hover:-translate-y-0.5" />
+                    </motion.button>
+                </motion.div>
+            </div>
+
+            {/* ── Footer ── */}
+            <footer className="relative z-10 border-t border-border/40">
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                        {/* Left — Powered by Together AI */}
+                        <a
+                            href="https://together.ai"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-2.5 text-muted-foreground hover:text-foreground transition-colors group"
+                        >
+                            <Image
+                                src="/together-logo-solo.svg"
+                                alt="Together AI"
+                                width={16}
+                                height={16}
+                                className="opacity-50 group-hover:opacity-100 transition-opacity"
+                            />
+                            <span className="text-xs font-medium">Powered by Together AI</span>
+                        </a>
+
+                        {/* Center / Right — Links */}
+                        <div className="flex items-center gap-5">
+                            <a
+                                href="https://github.com/togethercomputer/substudio"
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                                <Github className="w-3.5 h-3.5" />
+                                GitHub
+                            </a>
+                            <span className="text-[11px] text-muted-foreground/40">
+                                © {new Date().getFullYear()} SubStudio
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </footer>
         </div>
     );
 }

@@ -146,6 +146,32 @@
   }
 }
 
+/* Animated gradient text for hero */
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.hero-gradient-text {
+  background: linear-gradient(
+    135deg,
+    hsl(220, 80%, 72%),
+    hsl(260, 70%, 70%),
+    hsl(310, 60%, 68%),
+    hsl(260, 70%, 70%),
+    hsl(220, 80%, 72%)
+  );
+  background-size: 300% 300%;
+  animation: gradient-shift 6s ease-in-out infinite;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 /* Hide scrollbar for horizontal scroll containers */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
