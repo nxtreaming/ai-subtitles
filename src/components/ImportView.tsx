@@ -1,7 +1,8 @@
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { motion } from "framer-motion";
-import { UploadCloud, Link as LinkIcon, FileVideo, ArrowRight, Zap, Type, Settings2, Sparkles } from "lucide-react";
+import { UploadCloud, Link as LinkIcon, FileVideo, ArrowRight } from "lucide-react";
+import SubtitleSimulator from "./SubtitleSimulator";
 import { cn } from "@/lib/utils";
 
 
@@ -105,10 +106,27 @@ export default function ImportView({ onNext, setVideoFile, setYoutubeUrl }: Impo
                 {/* Badge */}
                 <motion.div
                     variants={childFadeUp}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border border-border text-sm font-medium text-muted-foreground mb-8"
+                    className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-muted/50 border border-border text-sm font-medium text-muted-foreground mb-8"
                 >
-                    <Sparkles className="w-4 h-4 text-primary" />
-                    <span>The fastest way to caption your videos</span>
+                    {/* Mini animated equalizer */}
+                    <div className="flex items-end gap-[2px] h-[12px]">
+                        {[
+                            { h: "40%", d: "0s" },
+                            { h: "80%", d: "0.18s" },
+                            { h: "55%", d: "0.36s" },
+                            { h: "100%", d: "0.09s" },
+                        ].map(({ h, d }, i) => (
+                            <div
+                                key={i}
+                                className="w-[2px] rounded-full bg-muted-foreground/70 origin-bottom"
+                                style={{
+                                    height: h,
+                                    animation: `waveBar 1.3s ease-in-out ${d} infinite`,
+                                }}
+                            />
+                        ))}
+                    </div>
+                    <span>Groq · Whisper · word-level precision</span>
                 </motion.div>
 
                 {/* Hero text */}
@@ -230,71 +248,44 @@ export default function ImportView({ onNext, setVideoFile, setYoutubeUrl }: Impo
             </motion.div>
 
 
-            {/* Features Section */}
-            <div className="max-w-6xl mx-auto px-6 py-24 relative z-10 border-t border-border/50">
+            {/* Pipeline Demo Section */}
+            <div className="max-w-5xl mx-auto px-6 py-24 relative z-10 border-t border-border/50">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: "-80px" }}
                     transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] as const }}
-                    className="text-center mb-16"
+                    className="flex flex-col items-center"
                 >
-                    <h2 className="text-3xl font-bold tracking-tight mb-4">Everything you need</h2>
-                    <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                        SubStudio is built for speed and precision, giving you full control over your content.
-                    </p>
-                </motion.div>
+                    {/* Eyebrow label */}
+                    <span className="font-mono text-[11px] tracking-[0.2em] uppercase text-muted-foreground/40 mb-10">
+                        watch it work
+                    </span>
 
-                <motion.div
-                    initial="hidden"
-                    whileInView="visible"
-                    viewport={{ once: true, margin: "-60px" }}
-                    variants={{
-                        hidden: {},
-                        visible: { transition: { staggerChildren: 0.12 } },
-                    }}
-                    className="grid md:grid-cols-3 gap-8"
-                >
-                    <FeatureCard
-                        icon={<Zap className="w-6 h-6 text-yellow-500" />}
-                        title="Blazing Fast Transcription"
-                        description="Powered by Groq and Whisper, get highly accurate transcripts in seconds, not minutes."
-                    />
-                    <FeatureCard
-                        icon={<Type className="w-6 h-6 text-primary" />}
-                        title="Word-level Animation"
-                        description="Engage your audience with dynamic, word-by-word highlighted subtitles built right in."
-                    />
-                    <FeatureCard
-                        icon={<Settings2 className="w-6 h-6 text-emerald-500" />}
-                        title="Fully Customizable"
-                        description="Adjust fonts, colors, positioning, and animations to match your unique brand style."
-                    />
+                    {/* Simulator */}
+                    <div className="w-full max-w-3xl">
+                        <SubtitleSimulator />
+                    </div>
+
+                    {/* Stats row */}
+                    <div className="flex flex-wrap items-center justify-center gap-6 md:gap-10 mt-12 text-sm text-muted-foreground">
+                        <div>
+                            <span className="text-foreground font-semibold">1.8s</span>
+                            {" avg transcription"}
+                        </div>
+                        <span className="text-border/60 hidden md:inline">·</span>
+                        <div>
+                            <span className="text-foreground font-semibold">Word-level</span>
+                            {" timing accuracy"}
+                        </div>
+                        <span className="text-border/60 hidden md:inline">·</span>
+                        <div>
+                            <span className="text-foreground font-semibold">100+</span>
+                            {" style presets"}
+                        </div>
+                    </div>
                 </motion.div>
             </div>
         </div>
-    );
-}
-
-function FeatureCard({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
-    return (
-        <motion.div
-            variants={{
-                hidden: { opacity: 0, y: 24 },
-                visible: {
-                    opacity: 1,
-                    y: 0,
-                    transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as const },
-                },
-            }}
-            whileHover={{ y: -4, transition: { duration: 0.25 } }}
-            className="bg-card border border-border/50 p-6 rounded-2xl hover:bg-muted/30 hover:shadow-lg hover:shadow-primary/[0.03] transition-all duration-300 cursor-default"
-        >
-            <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mb-6">
-                {icon}
-            </div>
-            <h3 className="text-xl font-semibold mb-2">{title}</h3>
-            <p className="text-muted-foreground leading-relaxed">{description}</p>
-        </motion.div>
     );
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, ListTodo, AlertTriangle, MonitorPlay, Download, FileText, FileVideo, ChevronDown, Loader2, CheckCircle2, Plus } from "lucide-react";
+import { Play, Pause, ListTodo, AlertTriangle, MonitorPlay, Download, FileText, FileVideo, ChevronDown, Loader2, CheckCircle2, Plus, Search, Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Subtitle {
@@ -82,11 +82,17 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
     const videoRef = useRef<HTMLVideoElement>(null);
     const exportRef = useRef<HTMLDivElement>(null);
 
+    // Search & copy state
+    const [searchQuery, setSearchQuery] = useState("");
+    const [copied, setCopied] = useState(false);
+
     const stylePresets = [
         { id: "classic", name: "Classic", desc: "Standard bottom text" },
         { id: "tiktok", name: "TikTok", desc: "Yellow highlights, word-by-word" },
         { id: "box", name: "Modern Box", desc: "Text with solid background" },
-        { id: "cinematic", name: "Cinematic", desc: "Subtle drop shadow" }
+        { id: "cinematic", name: "Cinematic", desc: "Subtle drop shadow" },
+        { id: "outline", name: "Outline", desc: "White text, black stroke" },
+        { id: "bold-center", name: "Bold Center", desc: "Large centered, glow effect" },
     ];
 
     // Parse SRT
@@ -123,6 +129,74 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
             document.removeEventListener("keydown", handleKey);
         };
     }, [isExportOpen]);
+
+    // Keyboard shortcuts
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            const tag = (e.target as HTMLElement)?.tagName;
+            if (tag === "INPUT" || tag === "TEXTAREA") return;
+
+            switch (e.key) {
+                case " ":
+                    e.preventDefault();
+                    togglePlay();
+                    break;
+                case "j":
+                    if (videoRef.current) videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 5);
+                    break;
+                case "l":
+                    if (videoRef.current) videoRef.current.currentTime = Math.min(duration, videoRef.current.currentTime + 5);
+                    break;
+                case "ArrowUp": {
+                    e.preventDefault();
+                    const idx = subtitles.findIndex(s => s.id === activeId);
+                    if (idx > 0) {
+                        const prev = subtitles[idx - 1];
+                        setActiveId(prev.id);
+                        if (videoRef.current) videoRef.current.currentTime = parseTime(prev.start);
+                        document.getElementById(`sub-${prev.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+                    }
+                    break;
+                }
+                case "ArrowDown": {
+                    e.preventDefault();
+                    const idx = subtitles.findIndex(s => s.id === activeId);
+                    if (idx < subtitles.length - 1) {
+                        const next = subtitles[idx + 1];
+                        setActiveId(next.id);
+                        if (videoRef.current) videoRef.current.currentTime = parseTime(next.start);
+                        document.getElementById(`sub-${next.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+                    }
+                    break;
+                }
+            }
+        };
+        document.addEventListener("keydown", handler);
+        return () => document.removeEventListener("keydown", handler);
+    }, [activeId, subtitles, duration]);
+
+    // Copy transcript to clipboard
+    const handleCopyTranscript = async () => {
+        const text = subtitles.map(s => s.text).join("\n");
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    // Filtered subtitles based on search
+    const filteredSubtitles = subtitles.filter(s => {
+        if (showReviewQueue && s.confidence >= 0.8) return false;
+        if (searchQuery && !s.text.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+        return true;
+    });
+
+    // Stats
+    const totalWords = subtitles.reduce((acc, s) => acc + s.text.split(/\s+/).filter(Boolean).length, 0);
+    const totalDurationSec = subtitles.length > 0
+        ? parseTime(subtitles[subtitles.length - 1].end) - parseTime(subtitles[0].start)
+        : 0;
+    const statsMins = Math.floor(totalDurationSec / 60);
+    const statsSecs = Math.floor(totalDurationSec % 60);
 
     // Handle Time Update
     const handleTimeUpdate = () => {
@@ -319,6 +393,36 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
                     </div>
                 );
 
+            case "outline":
+                return (
+                    <div className="absolute bottom-14 left-0 right-0 flex justify-center z-10 px-8 pointer-events-none">
+                        <div className="text-center max-w-[90%]">
+                            <span className="text-white font-bold text-sm lg:text-base leading-snug tracking-wide" style={{
+                                WebkitTextStroke: "1.5px black",
+                                paintOrder: "stroke fill",
+                                textShadow: "0 1px 4px rgba(0,0,0,0.5)",
+                            }}>
+                                {displayText}
+                            </span>
+                        </div>
+                    </div>
+                );
+
+            case "bold-center":
+                return (
+                    <div className="absolute inset-0 flex items-center justify-center z-10 px-6 pointer-events-none">
+                        <div className="text-center max-w-[80%]">
+                            <span className="text-white font-black text-xl lg:text-3xl uppercase leading-none tracking-tight" style={{
+                                WebkitTextStroke: "2px rgba(0,0,0,0.6)",
+                                paintOrder: "stroke fill",
+                                textShadow: "0 0 20px rgba(255,255,255,0.15), 0 4px 12px rgba(0,0,0,0.8)",
+                            }}>
+                                {displayText}
+                            </span>
+                        </div>
+                    </div>
+                );
+
             default:
                 return null;
         }
@@ -432,48 +536,65 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
                 className="flex-[2] flex flex-col bg-background min-w-[400px] h-full overflow-hidden"
             >
                 {/* Editor Toolbar */}
-                <div className="h-16 border-b flex items-center justify-between px-4 shrink-0 bg-card">
-                    <div className="flex items-center gap-3">
-                        <motion.button
-                            onClick={onNewProject}
-                            whileTap={{ scale: 0.97 }}
-                            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
-                        >
-                            <Plus className="w-4 h-4" /> New
-                        </motion.button>
-                        <button
-                            onClick={() => setShowReviewQueue(!showReviewQueue)}
-                            className={cn(
-                                "px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-2 transition-colors",
-                                showReviewQueue ? "bg-primary text-primary-foreground" : "bg-muted text-foreground hover:bg-muted/80"
-                            )}
-                        >
-                            <ListTodo className="w-4 h-4" />
-                            Review
-                            {needsReviewCount > 0 && (
-                                <span className="bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0.5 rounded-full min-w-4 text-center">
-                                    {needsReviewCount}
+                <div className="border-b shrink-0 bg-card">
+                    <div className="h-14 flex items-center justify-between px-4">
+                        <div className="flex items-center gap-2">
+                            <motion.button
+                                onClick={onNewProject}
+                                whileTap={{ scale: 0.97 }}
+                                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+                            >
+                                <Plus className="w-4 h-4" /> New
+                            </motion.button>
+                            <button
+                                onClick={() => setShowReviewQueue(!showReviewQueue)}
+                                className={cn(
+                                    "px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-2 transition-colors",
+                                    showReviewQueue ? "bg-primary text-primary-foreground" : "bg-muted text-foreground hover:bg-muted/80"
+                                )}
+                            >
+                                <ListTodo className="w-4 h-4" />
+                                Review
+                                {needsReviewCount > 0 && (
+                                    <span className="bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0.5 rounded-full min-w-4 text-center">
+                                        {needsReviewCount}
+                                    </span>
+                                )}
+                            </button>
+                            {subtitles.length > 0 && (
+                                <span className="text-[11px] text-muted-foreground/60 font-mono tabular-nums ml-1 hidden lg:inline">
+                                    {subtitles.length} subs · {totalWords} words · {statsMins}m {String(statsSecs).padStart(2, "0")}s
                                 </span>
                             )}
-                        </button>
-                    </div>
+                        </div>
 
-                    {/* Export Button with Dropdown */}
-                    <div className="relative" ref={exportRef}>
-                        <motion.button
-                            onClick={() => setIsExportOpen(!isExportOpen)}
-                            whileTap={{ scale: 0.98 }}
-                            className={cn(
-                                "text-sm px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-all",
-                                isExportOpen
-                                    ? "bg-foreground text-background shadow-lg"
-                                    : "bg-foreground text-background hover:bg-foreground/90"
-                            )}
-                        >
-                            <Download className="w-4 h-4" />
-                            Export
-                            <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", isExportOpen && "rotate-180")} />
-                        </motion.button>
+                        <div className="flex items-center gap-2">
+                            {/* Copy transcript */}
+                            <motion.button
+                                onClick={handleCopyTranscript}
+                                whileTap={{ scale: 0.95 }}
+                                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all"
+                                title="Copy transcript"
+                            >
+                                {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                            </motion.button>
+
+                            {/* Export Button with Dropdown */}
+                            <div className="relative" ref={exportRef}>
+                                <motion.button
+                                    onClick={() => setIsExportOpen(!isExportOpen)}
+                                    whileTap={{ scale: 0.98 }}
+                                    className={cn(
+                                        "text-sm px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-all",
+                                        isExportOpen
+                                            ? "bg-foreground text-background shadow-lg"
+                                            : "bg-foreground text-background hover:bg-foreground/90"
+                                    )}
+                                >
+                                    <Download className="w-4 h-4" />
+                                    Export
+                                    <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", isExportOpen && "rotate-180")} />
+                                </motion.button>
 
                         <AnimatePresence>
                             {isExportOpen && (
@@ -566,12 +687,30 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
                                 </motion.div>
                             )}
                         </AnimatePresence>
+                            </div>
+                        </div>
                     </div>
+
+                    {/* Search bar */}
+                    {subtitles.length > 0 && (
+                        <div className="px-4 py-2 border-t border-border/40">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
+                                <input
+                                    type="text"
+                                    placeholder="Search subtitles..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full pl-8 pr-3 py-1.5 text-sm bg-muted/30 border border-border/50 rounded-lg outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40 transition-all text-foreground placeholder:text-muted-foreground/40"
+                                />
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Subtitle List */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-                    {subtitles.filter(s => showReviewQueue ? s.confidence < 0.8 : true).map((sub, index) => {
+                    {filteredSubtitles.map((sub, index) => {
                         const isLong = sub.text.length > 50;
                         const needsReview = sub.confidence < 0.8;
 
@@ -606,8 +745,9 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
 
                                     <div className="flex items-center gap-2">
                                         {needsReview && (
-                                            <span className="flex items-center gap-1 text-[10px] uppercase font-bold text-destructive bg-destructive/10 px-2 py-0.5 rounded">
-                                                <AlertTriangle className="w-3 h-3" /> Review
+                                            <span className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-orange-400 bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 rounded-full">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
+                                                Review
                                             </span>
                                         )}
                                         {isLong && (
@@ -635,6 +775,13 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
                             </motion.div>
                         );
                     })}
+
+                    {filteredSubtitles.length === 0 && searchQuery && (
+                        <div className="text-center py-12 text-muted-foreground/50">
+                            <Search className="w-8 h-8 mx-auto mb-3 opacity-40" />
+                            <p className="text-sm font-medium">No subtitles match &ldquo;{searchQuery}&rdquo;</p>
+                        </div>
+                    )}
                 </div>
             </motion.div>
         </div>

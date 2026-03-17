@@ -128,3 +128,14 @@
     background-position: 200% center;
   }
 }
+
+/* Mini equalizer bars for pill badge */
+@keyframes waveBar {
+  0%, 100% {
+    transform: scaleY(1);
+  }
+
+  50% {
+    transform: scaleY(0.28);
+  }
+}
