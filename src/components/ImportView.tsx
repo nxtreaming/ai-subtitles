@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { motion } from "framer-motion";
-import { UploadCloud, Link as LinkIcon, FileVideo, ArrowRight } from "lucide-react";
+import { UploadCloud, Link as LinkIcon, FileVideo, ArrowRight, Zap, Target, Palette } from "lucide-react";
 import SubtitleSimulator from "./SubtitleSimulator";
 import { cn } from "@/lib/utils";
 
@@ -38,6 +38,34 @@ const cardZoomIn = {
         transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as const },
     },
 };
+
+/* ── Stats data ── */
+const STATS = [
+    {
+        icon: Zap,
+        value: "1.8s",
+        label: "Avg transcription",
+        description: "Lightning-fast AI processing",
+        gradient: "from-amber-500/20 to-orange-500/10",
+        iconColor: "text-amber-400",
+    },
+    {
+        icon: Target,
+        value: "Word-level",
+        label: "Timing accuracy",
+        description: "Precise per-word timestamps",
+        gradient: "from-blue-500/20 to-cyan-500/10",
+        iconColor: "text-blue-400",
+    },
+    {
+        icon: Palette,
+        value: "6",
+        label: "Style presets",
+        description: "From classic to bold center",
+        gradient: "from-purple-500/20 to-pink-500/10",
+        iconColor: "text-purple-400",
+    },
+];
 
 export default function ImportView({ onNext, setVideoFile, setYoutubeUrl }: ImportViewProps) {
     const [url, setUrl] = useState("");
@@ -273,22 +301,42 @@ export default function ImportView({ onNext, setVideoFile, setYoutubeUrl }: Impo
                         <SubtitleSimulator />
                     </div>
 
-                    {/* Stats row */}
-                    <div className="flex flex-wrap items-center justify-center gap-6 md:gap-10 mt-10 sm:mt-14 text-sm text-muted-foreground">
-                        <div>
-                            <span className="text-foreground font-semibold">1.8s</span>
-                            {" avg transcription"}
-                        </div>
-                        <span className="text-border/60 hidden md:inline">·</span>
-                        <div>
-                            <span className="text-foreground font-semibold">Word-level</span>
-                            {" timing accuracy"}
-                        </div>
-                        <span className="text-border/60 hidden md:inline">·</span>
-                        <div>
-                            <span className="text-foreground font-semibold">6</span>
-                            {" style presets"}
-                        </div>
+                    {/* Stats cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-12 sm:mt-16 w-full max-w-3xl">
+                        {STATS.map((stat, i) => (
+                            <motion.div
+                                key={stat.label}
+                                initial={{ opacity: 0, y: 16, scale: 0.95 }}
+                                whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                                viewport={{ once: true, margin: "-40px" }}
+                                transition={{ duration: 0.5, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
+                                whileHover={{ y: -4 }}
+                                className="group relative overflow-hidden rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5 transition-all duration-300 hover:border-border/80 hover:shadow-lg hover:shadow-black/20"
+                            >
+                                {/* Gradient accent */}
+                                <div className={cn(
+                                    "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br",
+                                    stat.gradient
+                                )} />
+
+                                <div className="relative z-10">
+                                    <div className={cn(
+                                        "w-9 h-9 rounded-lg flex items-center justify-center mb-3 bg-white/[0.04] border border-white/[0.06] transition-colors duration-300 group-hover:bg-white/[0.08]"
+                                    )}>
+                                        <stat.icon className={cn("w-4.5 h-4.5", stat.iconColor)} />
+                                    </div>
+                                    <div className="text-xl font-bold text-foreground tracking-tight mb-0.5">
+                                        {stat.value}
+                                    </div>
+                                    <div className="text-xs font-medium text-muted-foreground/70 mb-1">
+                                        {stat.label}
+                                    </div>
+                                    <div className="text-[10px] text-muted-foreground/40 leading-relaxed">
+                                        {stat.description}
+                                    </div>
+                                </div>
+                            </motion.div>
+                        ))}
                     </div>
                 </motion.div>
             </div>

@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { Play, Download, Search, ListTodo, ChevronDown } from "lucide-react";
+import { Play, Download, Search, ListTodo, ChevronDown, Check, FileText, FileVideo } from "lucide-react";
 import Image from "next/image";
 
 /* ── Demo data mimicking the real editor ── */
@@ -20,14 +20,22 @@ const STYLES = [
     { id: "classic", name: "Classic" },
     { id: "tiktok", name: "TikTok" },
     { id: "box", name: "Modern Box" },
+    { id: "cinematic", name: "Cinematic" },
     { id: "outline", name: "Outline" },
+    { id: "bold-center", name: "Bold Center" },
 ] as const;
 
-// Timing — continuous loop, no fade out
+const EXPORT_FORMATS = [
+    { ext: ".SRT", color: "text-blue-400", bg: "bg-blue-500/10", label: "SubRip Text" },
+    { ext: ".VTT", color: "text-purple-400", bg: "bg-purple-500/10", label: "WebVTT" },
+    { ext: ".MP4", color: "text-emerald-400", bg: "bg-emerald-500/10", label: "Burned-in" },
+];
+
+// Timing
 const PHASE_BOOT = 600;
 const PHASE_CARDS_STAGGER = 120;
-const PHASE_STYLE_DWELL = 2800;
-const PHASE_PAUSE_BETWEEN = 400;
+const PHASE_STYLE_DWELL = 2400;
+const PHASE_PAUSE_BETWEEN = 300;
 
 export default function SubtitleSimulator() {
     const [activeCard, setActiveCard] = useState(-1);
@@ -39,6 +47,10 @@ export default function SubtitleSimulator() {
     const [hoveredStyle, setHoveredStyle] = useState<number | null>(null);
     const [cursorBlink, setCursorBlink] = useState(false);
     const [typingCard, setTypingCard] = useState<number | null>(null);
+    // Export animation state
+    const [showExport, setShowExport] = useState(false);
+    const [exportChecks, setExportChecks] = useState<number[]>([]);
+
     const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
     const rafRef = useRef<number | null>(null);
     const cycleRef = useRef(0);
@@ -61,8 +73,6 @@ export default function SubtitleSimulator() {
         function runCycle() {
             clearAll();
             const cycle = cycleRef.current++;
-
-            // On first cycle, stagger cards in. On subsequent cycles, cards are already visible.
             const isFirst = cycle === 0;
 
             if (isFirst) {
@@ -74,6 +84,8 @@ export default function SubtitleSimulator() {
                 setIsPlaying(false);
                 setCursorBlink(false);
                 setTypingCard(null);
+                setShowExport(false);
+                setExportChecks([]);
             }
 
             let t = isFirst ? PHASE_BOOT : 200;
@@ -91,32 +103,36 @@ export default function SubtitleSimulator() {
                 t += 300;
             }
 
-            // Phase 2: Cycle through styles with subtitle display
+            // Phase 2: Cycle through all 6 styles with subtitle display
+            const totalStyles = STYLES.length;
+            const stylesPerCycle = totalStyles;
             const styleOrder = isFirst
-                ? [0, 1, 2, 3]
-                : [cycle % STYLES.length, (cycle + 1) % STYLES.length, (cycle + 2) % STYLES.length, (cycle + 3) % STYLES.length];
+                ? Array.from({ length: stylesPerCycle }, (_, i) => i)
+                : Array.from({ length: stylesPerCycle }, (_, i) => (cycle * 2 + i) % totalStyles);
 
             styleOrder.forEach((si, loopIdx) => {
                 const subIndex = loopIdx % DEMO_SUBS.length;
                 const sub = DEMO_SUBS[subIndex];
 
-                // Activate style + card
+                // Activate style + card + immediately set full text (no gap)
                 add(() => {
                     setActiveStyle(si);
                     setActiveCard(subIndex);
                     setTypingCard(subIndex);
                     setCursorBlink(true);
+                    // Set subtitle text immediately so there's never a blank moment
+                    setSubtitleText(sub.text.charAt(0));
                 }, t);
 
                 // Type out the subtitle text character by character
                 const text = sub.text;
-                const charDelay = Math.min(35, 800 / text.length);
-                for (let ci = 0; ci <= text.length; ci++) {
+                const charDelay = Math.min(30, 600 / text.length);
+                for (let ci = 1; ci <= text.length; ci++) {
                     add(() => {
                         setSubtitleText(text.slice(0, ci));
-                    }, t + 80 + ci * charDelay);
+                    }, t + 40 + ci * charDelay);
                 }
-                const typeTime = 80 + text.length * charDelay;
+                const typeTime = 40 + text.length * charDelay;
 
                 add(() => {
                     setCursorBlink(false);
@@ -126,11 +142,12 @@ export default function SubtitleSimulator() {
                 // Animate progress bar smoothly during this dwell
                 add(() => {
                     const t0 = performance.now();
+                    const totalPhases = stylesPerCycle + 1; // +1 for export phase
                     const tick = (now: number) => {
                         const elapsed = now - t0;
                         const p = Math.min(elapsed / PHASE_STYLE_DWELL, 1);
-                        const segStart = loopIdx / styleOrder.length;
-                        const segEnd = (loopIdx + 1) / styleOrder.length;
+                        const segStart = loopIdx / totalPhases;
+                        const segEnd = (loopIdx + 1) / totalPhases;
                         setProgress(segStart + p * (segEnd - segStart));
                         if (p < 1) rafRef.current = requestAnimationFrame(tick);
                     };
@@ -140,11 +157,44 @@ export default function SubtitleSimulator() {
                 t += PHASE_STYLE_DWELL + PHASE_PAUSE_BETWEEN;
             });
 
-            // Seamless restart — no fade out
+            // Phase 3: Export animation
             add(() => {
+                setShowExport(true);
+                setExportChecks([]);
+            }, t);
+
+            // Progress bar for export phase
+            add(() => {
+                const t0 = performance.now();
+                const totalPhases = stylesPerCycle + 1;
+                const tick = (now: number) => {
+                    const elapsed = now - t0;
+                    const exportDwell = 2800;
+                    const p = Math.min(elapsed / exportDwell, 1);
+                    const segStart = stylesPerCycle / totalPhases;
+                    const segEnd = 1;
+                    setProgress(segStart + p * (segEnd - segStart));
+                    if (p < 1) rafRef.current = requestAnimationFrame(tick);
+                };
+                rafRef.current = requestAnimationFrame(tick);
+            }, t);
+
+            // Stagger checkmarks
+            EXPORT_FORMATS.forEach((_, i) => {
+                add(() => {
+                    setExportChecks(prev => [...prev, i]);
+                }, t + 400 + i * 500);
+            });
+
+            t += 2800;
+
+            // Hide export, reset, restart
+            add(() => {
+                setShowExport(false);
+                setExportChecks([]);
                 setProgress(0);
                 runCycle();
-            }, t);
+            }, t + 200);
         }
 
         runCycle();
@@ -189,6 +239,17 @@ export default function SubtitleSimulator() {
                         </span>
                     </div>
                 );
+            case "cinematic":
+                return (
+                    <div className="text-center">
+                        <span className="text-white/90 font-light text-xs sm:text-sm tracking-widest italic leading-relaxed" style={{
+                            textShadow: "0 2px 12px rgba(0,0,0,0.8), 0 0 30px rgba(0,0,0,0.5)",
+                            letterSpacing: "0.1em",
+                        }}>
+                            {subtitleText}{cursor}
+                        </span>
+                    </div>
+                );
             case "outline":
                 return (
                     <div className="text-center">
@@ -196,6 +257,18 @@ export default function SubtitleSimulator() {
                             WebkitTextStroke: "1.5px black",
                             paintOrder: "stroke fill",
                             textShadow: "0 2px 6px rgba(0,0,0,0.5)",
+                        }}>
+                            {subtitleText}{cursor}
+                        </span>
+                    </div>
+                );
+            case "bold-center":
+                return (
+                    <div className="text-center">
+                        <span className="text-white font-black text-sm sm:text-lg uppercase leading-none tracking-tight" style={{
+                            WebkitTextStroke: "1.5px rgba(0,0,0,0.6)",
+                            paintOrder: "stroke fill",
+                            textShadow: "0 0 20px rgba(255,255,255,0.15), 0 4px 12px rgba(0,0,0,0.8)",
                         }}>
                             {subtitleText}{cursor}
                         </span>
@@ -214,7 +287,7 @@ export default function SubtitleSimulator() {
             whileInView={{ opacity: 1, y: 0, scale: 1 }}
             viewport={{ once: true, margin: "-60px" }}
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="bg-card border border-border/60 rounded-2xl overflow-hidden shadow-[0_8px_60px_-12px_rgba(0,0,0,0.5)] ring-1 ring-white/[0.03]"
+            className="bg-card border border-border/60 rounded-2xl overflow-hidden shadow-[0_8px_60px_-12px_rgba(0,0,0,0.5)] ring-1 ring-white/[0.03] relative"
         >
             {/* ── Nav bar (mirrors real app) ── */}
             <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-border/40 bg-card/90 backdrop-blur-sm">
@@ -303,13 +376,86 @@ export default function SubtitleSimulator() {
                                         initial={{ opacity: 0, y: 8, scale: 0.95 }}
                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                         exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                                        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                                        transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
                                     >
                                         {renderSubtitle()}
                                     </motion.div>
                                 )}
                             </AnimatePresence>
                         </div>
+
+                        {/* Export animation overlay */}
+                        <AnimatePresence>
+                            {showExport && (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.3 }}
+                                    className="absolute inset-0 z-30 flex items-center justify-center"
+                                >
+                                    {/* Backdrop */}
+                                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+
+                                    {/* Export card */}
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                                        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                                        className="relative z-10 w-[85%] max-w-[260px]"
+                                    >
+                                        <div className="bg-card/95 backdrop-blur-xl border border-border/60 rounded-xl shadow-2xl overflow-hidden">
+                                            {/* Header */}
+                                            <div className="px-4 py-3 border-b border-border/30 flex items-center gap-2">
+                                                <div className="w-6 h-6 rounded-lg bg-foreground/10 flex items-center justify-center">
+                                                    <Download className="w-3.5 h-3.5 text-foreground/70" />
+                                                </div>
+                                                <span className="text-xs font-semibold text-foreground">Export Subtitles</span>
+                                            </div>
+
+                                            {/* Format list */}
+                                            <div className="p-2 space-y-1">
+                                                {EXPORT_FORMATS.map((fmt, i) => (
+                                                    <motion.div
+                                                        key={fmt.ext}
+                                                        initial={{ opacity: 0, x: -10 }}
+                                                        animate={{ opacity: 1, x: 0 }}
+                                                        transition={{ delay: i * 0.15, duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                                                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted/30 transition-colors"
+                                                    >
+                                                        <div className={cn("w-7 h-7 rounded-md flex items-center justify-center shrink-0", fmt.bg)}>
+                                                            {fmt.ext === ".MP4" ? (
+                                                                <FileVideo className={cn("w-3.5 h-3.5", fmt.color)} />
+                                                            ) : (
+                                                                <FileText className={cn("w-3.5 h-3.5", fmt.color)} />
+                                                            )}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-[11px] font-semibold text-foreground">{fmt.ext}</p>
+                                                            <p className="text-[9px] text-muted-foreground/50">{fmt.label}</p>
+                                                        </div>
+                                                        {/* Checkmark */}
+                                                        <AnimatePresence>
+                                                            {exportChecks.includes(i) && (
+                                                                <motion.div
+                                                                    initial={{ scale: 0, rotate: -90 }}
+                                                                    animate={{ scale: 1, rotate: 0 }}
+                                                                    transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                                                                    className="w-5 h-5 rounded-full bg-emerald-500/15 flex items-center justify-center"
+                                                                >
+                                                                    <Check className="w-3 h-3 text-emerald-400" />
+                                                                </motion.div>
+                                                            )}
+                                                        </AnimatePresence>
+                                                    </motion.div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
                         {/* Video controls bar */}
                         <div className="absolute bottom-0 left-0 right-0 z-30">
@@ -328,33 +474,34 @@ export default function SubtitleSimulator() {
                         </div>
                     </div>
 
-                    {/* Style selector bar */}
+                    {/* Style selector bar — pill highlight, no underline */}
                     <div className="px-3 sm:px-4 py-2.5 bg-card/60 border-t border-border/20">
-                        <div className="flex gap-1.5 sm:gap-2">
+                        <div className="flex gap-1 sm:gap-1.5 flex-wrap">
                             {STYLES.map((style, i) => (
                                 <motion.div
                                     key={style.id}
                                     onHoverStart={() => setHoveredStyle(i)}
                                     onHoverEnd={() => setHoveredStyle(null)}
-                                    className={cn(
-                                        "px-2.5 sm:px-3 py-1.5 rounded-lg text-[9px] sm:text-[10px] font-medium border cursor-default relative overflow-hidden",
-                                        "transition-colors duration-300",
-                                        i === activeStyle
-                                            ? "border-primary/30 bg-primary/5 text-foreground"
-                                            : hoveredStyle === i
-                                                ? "border-border/60 text-muted-foreground/80 bg-muted/20"
-                                                : "border-transparent text-muted-foreground/40"
-                                    )}
+                                    className="relative px-2.5 sm:px-3 py-1.5 rounded-md text-[9px] sm:text-[10px] font-medium cursor-default"
                                 >
-                                    {/* Active indicator line */}
+                                    {/* Animated background pill */}
                                     {i === activeStyle && (
                                         <motion.div
-                                            layoutId="activeStyleIndicator"
-                                            className="absolute bottom-0 left-1.5 right-1.5 h-[1.5px] bg-primary/50 rounded-full"
-                                            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                            layoutId="activeStylePill"
+                                            className="absolute inset-0 bg-foreground rounded-md"
+                                            transition={{ type: "spring", stiffness: 400, damping: 28 }}
                                         />
                                     )}
-                                    {style.name}
+                                    <span className={cn(
+                                        "relative z-10 transition-colors duration-200",
+                                        i === activeStyle
+                                            ? "text-background font-semibold"
+                                            : hoveredStyle === i
+                                                ? "text-muted-foreground/80"
+                                                : "text-muted-foreground/40"
+                                    )}>
+                                        {style.name}
+                                    </span>
                                 </motion.div>
                             ))}
                         </div>
