@@ -429,15 +429,15 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
     };
 
     return (
-        <div className="flex-1 flex h-[calc(100vh-64px)] overflow-hidden">
+        <div className="flex-1 flex flex-col md:flex-row h-[calc(100vh-64px)] overflow-hidden">
             {/* Left Panel: Video Player */}
             <motion.div
                 variants={panelSlideLeft}
                 initial="hidden"
                 animate="visible"
-                className="flex-[3] flex flex-col border-r bg-card/30 relative"
+                className="md:flex-[3] flex flex-col border-b md:border-b-0 md:border-r bg-card/30 relative"
             >
-                <div className="flex-1 p-6 flex flex-col items-center justify-center relative">
+                <div className="flex-1 p-3 sm:p-6 flex flex-col items-center justify-center relative">
                     <motion.div
                         initial={{ opacity: 0, scale: 0.96 }}
                         animate={{ opacity: 1, scale: 1 }}
@@ -492,7 +492,7 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
                     className="p-6 border-t bg-card/50"
                 >
                     <h3 className="font-medium text-foreground text-sm mb-3">Subtitle Style</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
                         {stylePresets.map((preset) => (
                             <motion.button
                                 key={preset.id}
@@ -533,7 +533,7 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
                 variants={panelSlideRight}
                 initial="hidden"
                 animate="visible"
-                className="flex-[2] flex flex-col bg-background min-w-[400px] h-full overflow-hidden"
+                className="md:flex-[2] flex flex-col bg-background md:min-w-[320px] h-full overflow-hidden"
             >
                 {/* Editor Toolbar */}
                 <div className="border-b shrink-0 bg-card">

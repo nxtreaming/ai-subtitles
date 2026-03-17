@@ -353,9 +353,9 @@ export default function SubtitleSimulator() {
             </div>
 
             {/* ── Editor layout ── */}
-            <div className="flex" style={{ minHeight: 380 }}>
+            <div className="flex flex-col sm:flex-row" style={{ minHeight: 280 }}>
                 {/* Left: Video player area */}
-                <div className="flex-[3] flex flex-col border-r border-border/30">
+                <div className="sm:flex-[3] flex flex-col border-b sm:border-b-0 sm:border-r border-border/30" style={{ minHeight: 200 }}>
                     {/* Video viewport */}
                     <div className="flex-1 bg-black relative flex items-center justify-center overflow-hidden">
                         {/* Cinematic gradient background */}
@@ -431,8 +431,8 @@ export default function SubtitleSimulator() {
                     </div>
 
                     {/* Style selector bar — pill highlight, no underline */}
-                    <div className="px-3 sm:px-4 py-2.5 bg-card/60 border-t border-border/20">
-                        <div className="flex gap-1 sm:gap-1.5 flex-wrap">
+                    <div className="px-2 sm:px-4 py-2 sm:py-2.5 bg-card/60 border-t border-border/20">
+                        <div className="flex gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar">
                             {STYLES.map((style, i) => (
                                 <motion.div
                                     key={style.id}
@@ -464,8 +464,8 @@ export default function SubtitleSimulator() {
                     </div>
                 </div>
 
-                {/* Right: Subtitle panel */}
-                <div className="flex-[2] flex flex-col bg-background/40 min-w-0">
+                {/* Right: Subtitle panel — hidden on mobile */}
+                <div className="hidden sm:flex sm:flex-[2] flex-col bg-background/40 min-w-0">
                     {/* Editor toolbar */}
                     <div className="border-b border-border/30 bg-card/40">
                         <div className="flex items-center justify-between px-3 sm:px-4 py-2.5">
