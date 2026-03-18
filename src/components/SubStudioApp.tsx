@@ -8,7 +8,7 @@ import EditorView from "./EditorView";
 import Logo from "./Logo";
 import ApiKeyModal from "./ApiKeyModal";
 import Image from "next/image";
-import { KeyRound, History, Check, CircleDot, Circle, Trash2, Clock, Plus } from "lucide-react";
+import { KeyRound, History, Check, Trash2, Clock, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Tooltip from "./Tooltip";
 
@@ -245,11 +245,14 @@ export default function SubStudioApp() {
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -8 }}
                                 transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] as const }}
-                                className="flex items-center gap-1 pointer-events-auto"
+                                className="flex items-center pointer-events-auto"
                             >
-                                <NavStepPill current={step} target="processing" label="Transcribe" />
-                                <div className="w-4 h-px bg-border/60 mx-0.5" />
-                                <NavStepPill current={step} target="editor" label="Edit & Export" />
+                                <NavStep current={step} target="processing" label="Transcribe" num={1} />
+                                <div className={cn(
+                                    "w-8 h-px mx-1",
+                                    step === "editor" ? "bg-foreground/20" : "bg-border/50"
+                                )} />
+                                <NavStep current={step} target="editor" label="Edit & Export" num={2} />
                             </motion.div>
                         </div>
                     )}
@@ -478,11 +481,12 @@ export default function SubStudioApp() {
     );
 }
 
-/* Step pill inside nav bar — icon only on mobile (hidden via parent), icon + label on desktop */
-function NavStepPill({ current, target, label }: {
+/* Minimal step indicator for nav bar */
+function NavStep({ current, target, label, num }: {
     current: AppStep;
     target: AppStep;
     label: string;
+    num: number;
 }) {
     const stepOrder: AppStep[] = ["processing", "editor"];
     const currentIndex = stepOrder.indexOf(current);
@@ -492,26 +496,31 @@ function NavStepPill({ current, target, label }: {
     const isCurrent = current === target;
 
     return (
-        <div
-            className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1 rounded-full transition-all duration-300 text-xs font-semibold",
-                isCurrent
-                    ? "bg-foreground text-background"
-                    : isPast
-                        ? "bg-muted/60 text-foreground"
-                        : "text-muted-foreground"
-            )}
-        >
-            <div className="w-3.5 h-3.5 flex items-center justify-center">
-                {isPast ? (
-                    <Check className="w-3 h-3" />
-                ) : isCurrent ? (
-                    <CircleDot className="w-3 h-3" />
-                ) : (
-                    <Circle className="w-3 h-3" />
+        <div className="flex items-center gap-2">
+            <div
+                className={cn(
+                    "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-300 border",
+                    isPast
+                        ? "border-green-500/40 bg-green-500/10 text-green-500"
+                        : isCurrent
+                            ? "border-foreground/30 bg-foreground text-background"
+                            : "border-border/60 text-muted-foreground/50"
                 )}
+            >
+                {isPast ? <Check className="w-2.5 h-2.5" /> : num}
             </div>
-            <span>{label}</span>
+            <span
+                className={cn(
+                    "text-xs font-medium transition-colors duration-300",
+                    isPast
+                        ? "text-muted-foreground"
+                        : isCurrent
+                            ? "text-foreground"
+                            : "text-muted-foreground/50"
+                )}
+            >
+                {label}
+            </span>
         </div>
     );
 }
