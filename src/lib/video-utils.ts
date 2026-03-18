@@ -1,4 +1,4 @@
-import youtubedl from 'youtube-dl-exec';
+import ytdl from '@distube/ytdl-core';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegPath from '@ffmpeg-installer/ffmpeg';
 import fs from 'fs';
@@ -8,35 +8,40 @@ import path from 'path';
 ffmpeg.setFfmpegPath(ffmpegPath.path);
 
 /**
- * Downloads a video from a YouTube URL using yt-dlp (via youtube-dl-exec).
- * This approach is actively maintained and handles YouTube's evolving protections.
+ * Check if a URL is a valid YouTube URL.
+ */
+export function isYoutubeUrl(url: string): boolean {
+    return ytdl.validateURL(url);
+}
+
+/**
+ * Downloads a video from a YouTube URL using @distube/ytdl-core (pure JS, no Python).
  */
 export async function downloadYoutubeVideo(url: string, outputPath: string): Promise<void> {
-    // Ensure output directory exists
     const dir = path.dirname(outputPath);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
     try {
-        await youtubedl(url, {
-            output: outputPath,
-            format: 'best[ext=mp4]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best',
-            mergeOutputFormat: 'mp4',
-            noCheckCertificates: true,
-            noWarnings: true,
-            preferFreeFormats: false,
-            addHeader: [
-                'referer:youtube.com',
-                'user-agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            ],
+        const stream = ytdl(url, {
+            filter: 'videoandaudio',
+            quality: 'highest',
         });
 
-        // Verify the file was created
+        const fileStream = fs.createWriteStream(outputPath);
+
+        await new Promise<void>((resolve, reject) => {
+            stream.pipe(fileStream);
+            stream.on('error', reject);
+            fileStream.on('finish', resolve);
+            fileStream.on('error', reject);
+        });
+
         if (!fs.existsSync(outputPath)) {
             throw new Error('Download completed but output file was not created');
         }
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
-        console.error('yt-dlp download error:', message);
+        console.error('ytdl-core download error:', message);
         throw new Error(`Failed to download video: ${message}`);
     }
 }

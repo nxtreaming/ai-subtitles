@@ -22,16 +22,32 @@ export async function GET(req: NextRequest) {
             ? path.join('/tmp', 'substudio')
             : path.join(process.cwd(), 'public', 'temp');
 
-        const videoPath = path.join(baseTempDir, `${jobId}.mp4`);
+        // Find the media file — could be .mp4, .mp3, .webm, .mov
+        const extensions = ['mp4', 'webm', 'mov', 'mp3', 'wav'];
+        let mediaPath = '';
+        let contentType = 'video/mp4';
 
-        if (!fs.existsSync(videoPath)) {
-            return NextResponse.json({ error: 'Video not found' }, { status: 404 });
+        for (const ext of extensions) {
+            const candidate = path.join(baseTempDir, `${safeJobId}.${ext}`);
+            if (fs.existsSync(candidate)) {
+                mediaPath = candidate;
+                if (ext === 'mp3') contentType = 'audio/mpeg';
+                else if (ext === 'wav') contentType = 'audio/wav';
+                else if (ext === 'webm') contentType = 'video/webm';
+                else if (ext === 'mov') contentType = 'video/quicktime';
+                else contentType = 'video/mp4';
+                break;
+            }
         }
 
-        const stat = fs.statSync(videoPath);
+        if (!mediaPath) {
+            return NextResponse.json({ error: 'Media not found' }, { status: 404 });
+        }
+
+        const stat = fs.statSync(mediaPath);
         const fileSize = stat.size;
 
-        // Handle range requests for video seeking
+        // Handle range requests for seeking
         const range = req.headers.get('range');
 
         if (range) {
@@ -40,7 +56,7 @@ export async function GET(req: NextRequest) {
             const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
             const chunkSize = end - start + 1;
 
-            const fileStream = fs.createReadStream(videoPath, { start, end });
+            const fileStream = fs.createReadStream(mediaPath, { start, end });
             const readable = new ReadableStream({
                 start(controller) {
                     fileStream.on('data', (chunk: Buffer | string) => controller.enqueue(typeof chunk === 'string' ? Buffer.from(chunk) : chunk));
@@ -55,16 +71,16 @@ export async function GET(req: NextRequest) {
                     'Content-Range': `bytes ${start}-${end}/${fileSize}`,
                     'Accept-Ranges': 'bytes',
                     'Content-Length': String(chunkSize),
-                    'Content-Type': 'video/mp4',
+                    'Content-Type': contentType,
                 },
             });
         }
 
-        const fileBuffer = fs.readFileSync(videoPath);
+        const fileBuffer = fs.readFileSync(mediaPath);
         return new NextResponse(fileBuffer, {
             headers: {
                 'Content-Length': String(fileSize),
-                'Content-Type': 'video/mp4',
+                'Content-Type': contentType,
                 'Accept-Ranges': 'bytes',
             },
         });

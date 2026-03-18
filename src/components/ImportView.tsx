@@ -107,7 +107,9 @@ export default function ImportView({ onNext, setVideoFile, setYoutubeUrl }: Impo
         accept: {
             'video/mp4': ['.mp4'],
             'video/quicktime': ['.mov'],
-            'video/webm': ['.webm']
+            'video/webm': ['.webm'],
+            'audio/mpeg': ['.mp3'],
+            'audio/wav': ['.wav'],
         },
         maxFiles: 1,
         multiple: false
@@ -238,7 +240,7 @@ export default function ImportView({ onNext, setVideoFile, setYoutubeUrl }: Impo
                                             {isDragActive ? "Drop video here" : "Click or drag video to upload"}
                                         </p>
                                         <p className="text-sm text-muted-foreground font-medium">
-                                            MP4, MOV, WEBM up to 1GB
+                                            MP4, MOV, WEBM, MP3 up to 1GB
                                         </p>
                                     </div>
                                 </div>

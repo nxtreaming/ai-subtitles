@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { downloadYoutubeVideo } from '@/lib/video-utils';
+import { downloadYoutubeVideo, isYoutubeUrl } from '@/lib/video-utils';
 import fs from 'fs';
 import path from 'path';
 
 export const maxDuration = 300; // 5 mins max for downloads
+
+/** Detect file extension from MIME type or filename */
+function detectExt(mimeType: string, fileName: string): string {
+    if (mimeType.includes('audio/mpeg') || fileName.endsWith('.mp3')) return 'mp3';
+    if (mimeType.includes('audio/wav') || fileName.endsWith('.wav')) return 'wav';
+    if (mimeType.includes('audio/')) return 'mp3'; // default audio
+    return 'mp4'; // default video
+}
 
 export async function POST(req: NextRequest) {
     try {
@@ -13,12 +21,9 @@ export async function POST(req: NextRequest) {
             ? path.join('/tmp', 'substudio')
             : path.join(process.cwd(), 'public', 'temp');
 
-        // Ensure /public/temp directory exists
         if (!fs.existsSync(baseTempDir)) {
             fs.mkdirSync(baseTempDir, { recursive: true });
         }
-
-        const videoPath = path.join(baseTempDir, `${jobId}.mp4`);
 
         const contentType = req.headers.get('content-type') || '';
 
@@ -30,14 +35,13 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({ error: 'No file provided' }, { status: 400 });
             }
 
-            // Convert to buffer robustly
+            const ext = detectExt(file.type, file.name);
+            const filePath = path.join(baseTempDir, `${jobId}.${ext}`);
+
             const bytes = await file.arrayBuffer();
-            const buffer = Buffer.from(bytes);
+            fs.writeFileSync(filePath, Buffer.from(bytes));
 
-            // Save to disk
-            fs.writeFileSync(videoPath, buffer);
-
-            return NextResponse.json({ jobId, status: 'success', type: 'upload' });
+            return NextResponse.json({ jobId, status: 'success', type: 'upload', ext });
 
         } else if (contentType.includes('application/json')) {
             const body = await req.json();
@@ -47,15 +51,22 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({ error: 'No URL provided' }, { status: 400 });
             }
 
-            if (youtubeUrl.endsWith('.mp4') || youtubeUrl.includes('.mp4?')) {
-                // Direct MP4 fetching
+            // Detect URL type: direct media file, or YouTube
+            const urlLower = youtubeUrl.toLowerCase();
+            const isDirectMedia = /\.(mp4|webm|mov|mp3|wav)(\?.*)?$/i.test(urlLower);
+
+            if (isDirectMedia) {
+                // Determine extension from URL
+                const urlExt = urlLower.match(/\.(mp4|webm|mov|mp3|wav)/)?.[1] || 'mp4';
+                const filePath = path.join(baseTempDir, `${jobId}.${urlExt}`);
+
                 console.log(`Fetching direct URL for job ${jobId}...`);
                 const response = await fetch(youtubeUrl, { cache: 'no-store' });
                 if (!response.ok) {
                     throw new Error(`Failed to fetch media: ${response.statusText}`);
                 }
 
-                const fileStream = fs.createWriteStream(videoPath);
+                const fileStream = fs.createWriteStream(filePath);
                 if (response.body) {
                     const reader = response.body.getReader();
                     while (true) {
@@ -68,13 +79,22 @@ export async function POST(req: NextRequest) {
                 } else {
                     throw new Error("Response body is null");
                 }
-            } else {
-                // Assume YouTube URL
-                console.log(`Downloading YouTube URL for job ${jobId}...`);
-                await downloadYoutubeVideo(youtubeUrl, videoPath);
-            }
 
-            return NextResponse.json({ jobId, status: 'success', type: 'url' });
+                return NextResponse.json({ jobId, status: 'success', type: 'url', ext: urlExt });
+
+            } else if (isYoutubeUrl(youtubeUrl)) {
+                const videoPath = path.join(baseTempDir, `${jobId}.mp4`);
+                console.log(`Downloading YouTube video for job ${jobId}...`);
+                await downloadYoutubeVideo(youtubeUrl, videoPath);
+
+                return NextResponse.json({ jobId, status: 'success', type: 'url', ext: 'mp4' });
+
+            } else {
+                return NextResponse.json(
+                    { error: 'Unsupported URL. Please provide a YouTube link or a direct video/audio URL.' },
+                    { status: 400 }
+                );
+            }
         } else {
             return NextResponse.json({ error: 'Unsupported Content-Type' }, { status: 415 });
         }

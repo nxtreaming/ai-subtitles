@@ -23,16 +23,31 @@ export async function POST(req: NextRequest) {
         const baseTempDir = process.env.NODE_ENV === 'production'
             ? path.join('/tmp', 'substudio')
             : path.join(process.cwd(), 'public', 'temp');
-        const videoPath = path.join(baseTempDir, `${jobId}.mp4`);
         const audioPath = path.join(baseTempDir, `${jobId}.mp3`);
 
-        if (!fs.existsSync(videoPath)) {
-            return NextResponse.json({ error: 'Video file not found' }, { status: 404 });
-        }
+        // Check if the input is already an audio file (MP3 upload) or a video
+        const videoPath = path.join(baseTempDir, `${jobId}.mp4`);
+        const hasVideo = fs.existsSync(videoPath);
+        const hasAudio = fs.existsSync(audioPath);
 
-        // 1. Extract audio
-        console.log(`Extracting audio for ${jobId}...`);
-        await extractAudio(videoPath, audioPath);
+        if (!hasVideo && !hasAudio) {
+            // Check for wav too
+            const wavPath = path.join(baseTempDir, `${jobId}.wav`);
+            if (fs.existsSync(wavPath)) {
+                // Convert wav to mp3 for Whisper
+                console.log(`Converting WAV to MP3 for ${jobId}...`);
+                await extractAudio(wavPath, audioPath);
+            } else {
+                return NextResponse.json({ error: 'Media file not found' }, { status: 404 });
+            }
+        } else if (hasVideo && !hasAudio) {
+            // Extract audio from video
+            console.log(`Extracting audio for ${jobId}...`);
+            await extractAudio(videoPath, audioPath);
+        } else {
+            // Audio already exists (MP3 upload), skip extraction
+            console.log(`Audio file already exists for ${jobId}, skipping extraction`);
+        }
 
         // 2. Transcribe via Together AI (Whisper large-v3)
         console.log(`Transcribing audio for ${jobId}...`);
