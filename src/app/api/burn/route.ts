@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { burnSubtitles, getVideoInfo } from '@/lib/video-utils';
+import { burnSubtitles } from '@/lib/video-utils';
 import fs from 'fs';
 import path from 'path';
 
