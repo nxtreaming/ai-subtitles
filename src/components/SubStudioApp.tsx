@@ -80,7 +80,7 @@ export default function SubStudioApp() {
     const [jobId, setJobId] = useState<string>("");
     const [srtContent, setSrtContent] = useState<string>("");
     const [words, setWords] = useState<unknown[]>([]);
-    const [stylePreset, setStylePreset] = useState<string>("tiktok");
+    const [stylePreset, setStylePreset] = useState<string>("classic");
     const [isSample, setIsSample] = useState(false);
     const [apiKeyModalVariant, setApiKeyModalVariant] = useState<"default" | "out-of-credits">("default");
 
@@ -229,7 +229,7 @@ export default function SubStudioApp() {
         setJobId("");
         setSrtContent("");
         setWords([]);
-        setStylePreset("tiktok");
+        setStylePreset("classic");
         setIsSample(false);
         setStep("import");
         window.history.pushState(null, "", "/");
@@ -387,11 +387,29 @@ export default function SubStudioApp() {
                                         ) : (
                                             <div className="py-1">
                                                 {historyEntries.map((entry, i) => (
-                                                    <div
+                                                    <button
                                                         key={`${entry.id}-${i}`}
-                                                        className="px-4 py-3 hover:bg-muted/50 transition-colors cursor-default border-b border-border/30 last:border-b-0"
+                                                        className="w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer border-b border-border/30 last:border-b-0 group/entry"
+                                                        onClick={() => {
+                                                            const data = loadJobData(entry.id);
+                                                            if (data) {
+                                                                setJobId(entry.id);
+                                                                setSrtContent(data.srtContent);
+                                                                setWords(data.words);
+                                                                setStylePreset(data.stylePreset);
+                                                                setIsSample(!!data.isSample);
+                                                                setStep("editor");
+                                                                setIsHistoryOpen(false);
+                                                                window.history.replaceState(null, "", `?jobId=${entry.id}`);
+                                                            } else {
+                                                                // Data was cleared — remove stale entry
+                                                                setHistoryEntries(prev => prev.filter((_, idx) => idx !== i));
+                                                                const updated = historyEntries.filter((_, idx) => idx !== i);
+                                                                localStorage.setItem("substudio_history", JSON.stringify(updated));
+                                                            }
+                                                        }}
                                                     >
-                                                        <div className="flex items-start justify-between gap-3">
+                                                        <div className="flex items-center justify-between gap-3">
                                                             <div className="min-w-0 flex-1">
                                                                 <p className="text-sm font-medium text-foreground truncate">
                                                                     {entry.title}
@@ -405,8 +423,11 @@ export default function SubStudioApp() {
                                                                     </span>
                                                                 </div>
                                                             </div>
+                                                            <svg className="w-4 h-4 text-muted-foreground/0 group-hover/entry:text-muted-foreground/60 transition-colors shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                <path d="M9 18l6-6-6-6" />
+                                                            </svg>
                                                         </div>
-                                                    </div>
+                                                    </button>
                                                 ))}
                                             </div>
                                         )}

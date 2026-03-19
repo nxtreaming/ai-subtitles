@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 import { useDropzone } from "react-dropzone";
 import { motion } from "framer-motion";
-import { UploadCloud, Link as LinkIcon, ArrowRight, ArrowUp, Zap, Target, Palette, Github } from "lucide-react";
+import { UploadCloud, Link as LinkIcon, ArrowRight, ArrowUp, Github } from "lucide-react";
 import SubtitleSimulator from "./SubtitleSimulator";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -61,28 +61,63 @@ const cardZoomIn = {
 /* ── Stats data ── */
 const STATS = [
     {
-        icon: Zap,
         value: "1.8s",
         label: "Avg transcription",
         description: "Lightning-fast AI processing",
         gradient: "from-amber-500/20 to-orange-500/10",
-        iconColor: "text-amber-400",
+        outerGradient: "from-[#F59E0B] to-[#F97316]",
+        renderIcon: () => (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="url(#stat-bolt)" />
+                <defs>
+                    <linearGradient id="stat-bolt" x1="3" y1="2" x2="21" y2="22" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#F59E0B" />
+                        <stop offset="1" stopColor="#F97316" />
+                    </linearGradient>
+                </defs>
+            </svg>
+        ),
     },
     {
-        icon: Target,
         value: "Word-level",
         label: "Timing accuracy",
         description: "Precise per-word timestamps",
         gradient: "from-blue-500/20 to-cyan-500/10",
-        iconColor: "text-blue-400",
+        outerGradient: "from-[#3B82F6] to-[#06B6D4]",
+        renderIcon: () => (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="url(#stat-target)" strokeWidth="2" />
+                <circle cx="12" cy="12" r="6" stroke="url(#stat-target)" strokeWidth="2" />
+                <circle cx="12" cy="12" r="2" fill="url(#stat-target)" />
+                <defs>
+                    <linearGradient id="stat-target" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#3B82F6" />
+                        <stop offset="1" stopColor="#06B6D4" />
+                    </linearGradient>
+                </defs>
+            </svg>
+        ),
     },
     {
-        icon: Palette,
         value: "6",
         label: "Style presets",
         description: "From classic to bold center",
         gradient: "from-purple-500/20 to-pink-500/10",
-        iconColor: "text-purple-400",
+        outerGradient: "from-[#A855F7] to-[#EC4899]",
+        renderIcon: () => (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.8 0 1.5-.7 1.5-1.5 0-.4-.1-.7-.4-1-.2-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H16c3.3 0 6-2.7 6-6 0-5-4.5-9-10-9z" fill="url(#stat-palette)" />
+                <circle cx="7.5" cy="11" r="1.5" fill="white" opacity="0.6" />
+                <circle cx="10.5" cy="7.5" r="1.5" fill="white" opacity="0.6" />
+                <circle cx="15" cy="7.5" r="1.5" fill="white" opacity="0.6" />
+                <defs>
+                    <linearGradient id="stat-palette" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#A855F7" />
+                        <stop offset="1" stopColor="#EC4899" />
+                    </linearGradient>
+                </defs>
+            </svg>
+        ),
     },
 ];
 
@@ -393,9 +428,12 @@ export default function ImportView({ onNext, setVideoFile, setYoutubeUrl, setIsS
 
                                 <div className="relative z-10">
                                     <div className={cn(
-                                        "w-9 h-9 rounded-lg flex items-center justify-center mb-3 bg-white/[0.04] border border-white/[0.06] transition-colors duration-300 group-hover:bg-white/[0.08]"
+                                        "w-9 h-9 rounded-lg p-[1.5px] mb-3 bg-gradient-to-br shrink-0 group-hover:shadow-lg transition-shadow",
+                                        stat.outerGradient
                                     )}>
-                                        <stat.icon className={cn("w-4.5 h-4.5", stat.iconColor)} />
+                                        <div className="w-full h-full rounded-[6px] bg-background flex items-center justify-center">
+                                            {stat.renderIcon()}
+                                        </div>
                                     </div>
                                     <div className="text-xl font-bold text-foreground tracking-tight mb-0.5">
                                         {stat.value}

@@ -254,17 +254,27 @@ export default function SubtitleSimulator() {
                         </span>
                     </div>
                 );
-            case "tiktok":
+            case "tiktok": {
+                const fullWords = subtitleText.trimEnd().split(/\s+/).filter(Boolean);
+                const highlightIdx = fullWords.length - 1;
                 return (
-                    <div className="text-center">
-                        <span className="text-white font-extrabold text-sm sm:text-base uppercase leading-tight" style={{
-                            textShadow: "0 2px 8px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.6)",
-                            letterSpacing: "0.04em",
-                        }}>
-                            {subtitleText}{cursor}
-                        </span>
+                    <div className="text-center flex flex-wrap justify-center gap-x-1.5 gap-y-0.5">
+                        {fullWords.map((word, i) => (
+                            <span
+                                key={i}
+                                className={`font-extrabold text-sm sm:text-base uppercase leading-tight ${i === highlightIdx ? "text-black bg-[#FACC15] px-1 py-0.5 rounded-sm" : "text-white"}`}
+                                style={{
+                                    textShadow: i !== highlightIdx ? "0 2px 8px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.6)" : "none",
+                                    letterSpacing: "0.04em",
+                                }}
+                            >
+                                {word}
+                            </span>
+                        ))}
+                        {cursor}
                     </div>
                 );
+            }
             case "box":
                 return (
                     <div className="bg-white px-4 py-2 rounded-lg text-center shadow-lg">

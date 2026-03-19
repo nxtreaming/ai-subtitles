@@ -259,6 +259,17 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
 
     const displayText = currentSubtitle?.text || "";
 
+    // Word-level highlight index for TikTok style
+    const getHighlightedWordIndex = (sub: Subtitle, time: number): number => {
+        const start = parseTime(sub.start);
+        const end = parseTime(sub.end);
+        const dur = end - start;
+        if (dur <= 0) return 0;
+        const progress = (time - start) / dur;
+        const words = sub.text.split(/\s+/);
+        return Math.min(Math.floor(progress * words.length), words.length - 1);
+    };
+
     // ---- Export Logic ----
     const downloadStringAsFile = (content: string, filename: string, type: string) => {
         const blob = new Blob([content], { type });
@@ -303,7 +314,7 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
                 const res = await fetch("/api/burn", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ jobId, srtContent: latestSrt, stylePreset, targetHeight: upscaleTarget })
+                    body: JSON.stringify({ jobId, srtContent: latestSrt, stylePreset, targetHeight: upscaleTarget, isSample })
                 });
 
                 if (!res.ok) {
@@ -369,19 +380,33 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
                     </div>
                 );
 
-            case "tiktok":
+            case "tiktok": {
+                const words = displayText.split(/\s+/);
+                const highlightIdx = currentSubtitle ? getHighlightedWordIndex(currentSubtitle, currentTime) : 0;
                 return (
                     <div className="absolute bottom-1/3 left-0 right-0 flex justify-center z-10 px-6 pointer-events-none">
-                        <div className="text-center max-w-[85%]">
-                            <span className="text-white font-extrabold text-lg lg:text-2xl uppercase leading-tight" style={{
-                                textShadow: "0 2px 8px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.6)",
-                                letterSpacing: "0.04em",
-                            }}>
-                                {displayText}
-                            </span>
+                        <div className="text-center max-w-[85%] flex flex-wrap justify-center gap-x-2 gap-y-1">
+                            {words.map((word, i) => (
+                                <span
+                                    key={i}
+                                    className={cn(
+                                        "font-extrabold text-lg lg:text-2xl uppercase leading-tight transition-all duration-150",
+                                        i === highlightIdx
+                                            ? "text-black bg-[#FACC15] px-1.5 py-0.5 rounded-md"
+                                            : "text-white"
+                                    )}
+                                    style={{
+                                        textShadow: i !== highlightIdx ? "0 2px 8px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.6)" : "none",
+                                        letterSpacing: "0.04em",
+                                    }}
+                                >
+                                    {word}
+                                </span>
+                            ))}
                         </div>
                     </div>
                 );
+            }
 
             case "box":
                 return (

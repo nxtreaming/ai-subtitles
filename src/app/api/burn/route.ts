@@ -8,7 +8,7 @@ export const maxDuration = 300; // 5 mins max duration
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { jobId, srtContent, targetHeight } = body;
+        const { jobId, srtContent, targetHeight, isSample } = body;
 
         if (!jobId) {
             return NextResponse.json({ error: 'No jobId provided' }, { status: 400 });
@@ -21,6 +21,24 @@ export async function POST(req: NextRequest) {
         const videoPath = path.join(baseTempDir, `${jobId}.mp4`);
         const srtPath = path.join(baseTempDir, `${jobId}.srt`);
         const outputPath = path.join(baseTempDir, `${jobId}_burned.mp4`);
+
+        // For sample videos, copy from public/ if not already in temp
+        if (!fs.existsSync(videoPath) && isSample) {
+            const dir = path.dirname(videoPath);
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+            const sampleSource = path.join(process.cwd(), 'public', 'sample-demo.mp4');
+            if (fs.existsSync(sampleSource)) {
+                fs.copyFileSync(sampleSource, videoPath);
+            } else {
+                // Fallback: fetch from own public URL (Vercel CDN serves public/ but may not expose to serverless fs)
+                const origin = req.headers.get('origin') || req.nextUrl.origin;
+                const res = await fetch(`${origin}/sample-demo.mp4`);
+                if (res.ok) {
+                    fs.writeFileSync(videoPath, Buffer.from(await res.arrayBuffer()));
+                }
+            }
+        }
 
         if (!fs.existsSync(videoPath)) {
             return NextResponse.json({ error: 'Source video not found' }, { status: 404 });
