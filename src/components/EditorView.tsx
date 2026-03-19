@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, ListTodo, AlertTriangle, MonitorPlay, Download, FileText, FileVideo, ChevronDown, Loader2, CheckCircle2, Search, Copy, Check, Sparkles } from "lucide-react";
+import { Play, Pause, ListTodo, AlertTriangle, MonitorPlay, Download, ChevronDown, Loader2, CheckCircle2, Search, Copy, Check, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Subtitle {
@@ -79,6 +79,7 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
     const [downloading, setDownloading] = useState<string | null>(null);
     const [exportSuccess, setExportSuccess] = useState<string | null>(null);
     const [exportError, setExportError] = useState<string | null>(null);
+    const [burnProgress, setBurnProgress] = useState<{ stage: string; progress: number } | null>(null);
 
     // Video info & enhancement
     const [videoHeight, setVideoHeight] = useState<number>(0);
@@ -311,6 +312,8 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
                 setExportSuccess("VTT downloaded!");
             }
             else if (type === "mp4") {
+                setBurnProgress({ stage: "preparing", progress: 0 });
+
                 const res = await fetch("/api/burn", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -328,19 +331,56 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
                     throw new Error(errorMessage);
                 }
 
-                // In production, burn API returns the video file directly as a stream
-                // In dev, it returns JSON with an outputUrl
-                const contentType = res.headers.get("content-type") || "";
-                let blob: Blob;
+                // Read streaming response: JSON progress lines, then binary video after {"done":true}
+                const reader = res.body!.getReader();
+                let buffer = new Uint8Array(0);
+                let binaryMode = false;
+                const binaryChunks: Uint8Array[] = [];
 
-                if (contentType.includes("video/")) {
-                    blob = await res.blob();
-                } else {
-                    const data = await res.json();
-                    const videoRes = await fetch(data.outputUrl);
-                    if (!videoRes.ok) throw new Error("Failed to fetch rendered video");
-                    blob = await videoRes.blob();
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    if (binaryMode) {
+                        binaryChunks.push(value);
+                        continue;
+                    }
+
+                    // Append chunk to buffer
+                    const newBuffer = new Uint8Array(buffer.length + value.length);
+                    newBuffer.set(buffer);
+                    newBuffer.set(value, buffer.length);
+                    buffer = newBuffer;
+
+                    // Scan for newlines (0x0A) to extract JSON progress lines
+                    while (true) {
+                        const nlIndex = buffer.indexOf(0x0A);
+                        if (nlIndex === -1) break;
+
+                        const lineBytes = buffer.slice(0, nlIndex);
+                        buffer = buffer.slice(nlIndex + 1);
+
+                        const line = new TextDecoder().decode(lineBytes).trim();
+                        if (!line) continue;
+
+                        try {
+                            const data = JSON.parse(line);
+                            if (data.done) {
+                                binaryMode = true;
+                                if (buffer.length > 0) binaryChunks.push(buffer);
+                                break;
+                            }
+                            if (data.stage === "error") throw new Error(data.message || "Encoding failed");
+                            setBurnProgress({ stage: data.stage || "encoding", progress: data.progress ?? 0 });
+                        } catch (e) {
+                            if (e instanceof SyntaxError) continue;
+                            throw e;
+                        }
+                    }
                 }
+
+                const blob = new Blob(binaryChunks as BlobPart[], { type: "video/mp4" });
+                if (blob.size === 0) throw new Error("Encoded video is empty");
 
                 const blobUrl = URL.createObjectURL(blob);
                 const a = document.createElement("a");
@@ -351,6 +391,7 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
                 document.body.removeChild(a);
                 URL.revokeObjectURL(blobUrl);
                 setExportSuccess("Video exported!");
+                setBurnProgress(null);
             }
 
             setTimeout(() => setExportSuccess(null), 3000);
@@ -359,6 +400,7 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
             setExportError((err as Error).message || "An unknown error occurred");
         } finally {
             setDownloading(null);
+            setBurnProgress(null);
         }
     };
 
@@ -684,7 +726,15 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
                                             className="w-full px-4 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors disabled:opacity-50 text-left"
                                         >
                                             <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
-                                                <FileText className="w-4 h-4 text-blue-500" />
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                                    <rect x="2" y="4" width="20" height="16" rx="3" stroke="url(#srt-grad)" strokeWidth="2" />
+                                                    <text x="12" y="14.5" textAnchor="middle" fontSize="8" fontWeight="700" fill="url(#srt-grad)">CC</text>
+                                                    <defs>
+                                                        <linearGradient id="srt-grad" x1="2" y1="4" x2="22" y2="20" gradientUnits="userSpaceOnUse">
+                                                            <stop stopColor="#3B82F6" /><stop offset="1" stopColor="#06B6D4" />
+                                                        </linearGradient>
+                                                    </defs>
+                                                </svg>
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-medium text-foreground">Download SRT</p>
@@ -700,7 +750,17 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
                                             className="w-full px-4 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors disabled:opacity-50 text-left"
                                         >
                                             <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0">
-                                                <FileText className="w-4 h-4 text-purple-500" />
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                                    <path d="M4 7l4 5-4 5" stroke="url(#vtt-grad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                    <path d="M20 7l-4 5 4 5" stroke="url(#vtt-grad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                    <rect x="9" y="10" width="6" height="2" rx="1" fill="url(#vtt-grad)" />
+                                                    <rect x="10" y="14" width="4" height="1.5" rx="0.75" fill="url(#vtt-grad)" opacity="0.5" />
+                                                    <defs>
+                                                        <linearGradient id="vtt-grad" x1="4" y1="7" x2="20" y2="17" gradientUnits="userSpaceOnUse">
+                                                            <stop stopColor="#A855F7" /><stop offset="1" stopColor="#EC4899" />
+                                                        </linearGradient>
+                                                    </defs>
+                                                </svg>
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-medium text-foreground">Download VTT</p>
@@ -718,13 +778,42 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
                                             className="w-full px-4 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors disabled:opacity-50 text-left"
                                         >
                                             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                                                <FileVideo className="w-4 h-4 text-primary" />
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                                    <rect x="2" y="4" width="20" height="16" rx="3" stroke="url(#mp4-grad)" strokeWidth="2" />
+                                                    <path d="M10 9l5 3-5 3V9z" fill="url(#mp4-grad)" />
+                                                    <rect x="5" y="16" width="14" height="2" rx="1" fill="url(#mp4-grad)" opacity="0.4" />
+                                                    <defs>
+                                                        <linearGradient id="mp4-grad" x1="2" y1="4" x2="22" y2="20" gradientUnits="userSpaceOnUse">
+                                                            <stop stopColor="#FF3B30" /><stop offset="0.5" stopColor="#34C759" /><stop offset="1" stopColor="#00BCD4" />
+                                                        </linearGradient>
+                                                    </defs>
+                                                </svg>
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-medium text-foreground">Export Burned-in MP4</p>
-                                                <p className="text-[11px] text-muted-foreground">Video with baked subtitles — for social media</p>
+                                                {burnProgress && downloading === "mp4" ? (
+                                                    <div className="mt-1 space-y-1">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-[11px] text-muted-foreground">
+                                                                {burnProgress.stage === "preparing" && "Preparing..."}
+                                                                {burnProgress.stage === "encoding" && `Encoding video... ${Math.round(burnProgress.progress)}%`}
+                                                                {burnProgress.stage === "finalizing" && "Finalizing..."}
+                                                            </span>
+                                                        </div>
+                                                        <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
+                                                            <motion.div
+                                                                className="h-full bg-primary rounded-full"
+                                                                initial={{ width: "0%" }}
+                                                                animate={{ width: `${burnProgress.stage === "preparing" ? 3 : burnProgress.progress}%` }}
+                                                                transition={{ duration: 0.3, ease: "easeOut" }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-[11px] text-muted-foreground">Video with baked subtitles — for social media</p>
+                                                )}
                                             </div>
-                                            {downloading === "mp4" && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                                            {downloading === "mp4" && !burnProgress && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
                                         </button>
 
                                         {/* Upscale option — only show if video is below 1080p */}

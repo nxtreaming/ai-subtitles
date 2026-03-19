@@ -6,76 +6,121 @@ import path from 'path';
 export const maxDuration = 300; // 5 mins max duration
 
 export async function POST(req: NextRequest) {
-    try {
-        const body = await req.json();
-        const { jobId, srtContent, targetHeight, isSample } = body;
+    const body = await req.json();
+    const { jobId, srtContent, targetHeight, isSample } = body;
 
-        if (!jobId) {
-            return NextResponse.json({ error: 'No jobId provided' }, { status: 400 });
-        }
+    if (!jobId) {
+        return NextResponse.json({ error: 'No jobId provided' }, { status: 400 });
+    }
 
-        const isProduction = process.env.NODE_ENV === 'production';
-        const baseTempDir = isProduction
-            ? path.join('/tmp', 'substudio')
-            : path.join(process.cwd(), 'public', 'temp');
-        const videoPath = path.join(baseTempDir, `${jobId}.mp4`);
-        const srtPath = path.join(baseTempDir, `${jobId}.srt`);
-        const outputPath = path.join(baseTempDir, `${jobId}_burned.mp4`);
+    const isProduction = process.env.NODE_ENV === 'production';
+    const baseTempDir = isProduction
+        ? path.join('/tmp', 'substudio')
+        : path.join(process.cwd(), 'public', 'temp');
 
-        // For sample videos, copy from public/ if not already in temp
-        if (!fs.existsSync(videoPath) && isSample) {
-            const dir = path.dirname(videoPath);
-            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    if (!fs.existsSync(baseTempDir)) fs.mkdirSync(baseTempDir, { recursive: true });
 
-            const sampleSource = path.join(process.cwd(), 'public', 'sample-demo.mp4');
-            if (fs.existsSync(sampleSource)) {
-                fs.copyFileSync(sampleSource, videoPath);
-            } else {
-                // Fallback: fetch from own public URL (Vercel CDN serves public/ but may not expose to serverless fs)
-                const origin = req.headers.get('origin') || req.nextUrl.origin;
-                const res = await fetch(`${origin}/sample-demo.mp4`);
-                if (res.ok) {
-                    fs.writeFileSync(videoPath, Buffer.from(await res.arrayBuffer()));
-                }
+    const videoPath = path.join(baseTempDir, `${jobId}.mp4`);
+    const srtPath = path.join(baseTempDir, `${jobId}.srt`);
+    const outputPath = path.join(baseTempDir, `${jobId}_burned.mp4`);
+
+    // --- Validate inputs synchronously before starting the stream ---
+
+    // For sample videos, copy from public/ if not already in temp
+    if (!fs.existsSync(videoPath) && isSample) {
+        const sampleSource = path.join(process.cwd(), 'public', 'sample-demo.mp4');
+        if (fs.existsSync(sampleSource)) {
+            fs.copyFileSync(sampleSource, videoPath);
+        } else {
+            const origin = req.headers.get('origin') || req.nextUrl.origin;
+            const res = await fetch(`${origin}/sample-demo.mp4`);
+            if (res.ok) {
+                fs.writeFileSync(videoPath, Buffer.from(await res.arrayBuffer()));
             }
         }
-
-        if (!fs.existsSync(videoPath)) {
-            return NextResponse.json({ error: 'Source video not found' }, { status: 404 });
-        }
-
-        // Write the edited SRT content to the file
-        if (srtContent) {
-            fs.writeFileSync(srtPath, srtContent);
-        } else if (!fs.existsSync(srtPath)) {
-            return NextResponse.json({ error: 'No SRT content provided or found' }, { status: 400 });
-        }
-
-        // Start burning process (this can take time)
-        const enhanceOpts = targetHeight ? { targetHeight: Number(targetHeight) } : undefined;
-        console.log(`Burning subtitles for ${jobId}...${enhanceOpts ? ` (upscale to ${enhanceOpts.targetHeight}p)` : ''}`);
-        await burnSubtitles(videoPath, srtPath, outputPath, enhanceOpts);
-        console.log(`Finished burning subtitles for ${jobId}. Output saved to ${outputPath}`);
-
-        if (isProduction) {
-            // In production (/tmp is not publicly served), stream the file back
-            const fileBuffer = fs.readFileSync(outputPath);
-            return new NextResponse(fileBuffer, {
-                headers: {
-                    'Content-Type': 'video/mp4',
-                    'Content-Disposition': `attachment; filename="${jobId}_burned.mp4"`,
-                },
-            });
-        }
-
-        return NextResponse.json({
-            jobId,
-            status: 'success',
-            outputUrl: `/temp/${jobId}_burned.mp4`
-        });
-
-    } catch (error: unknown) {
-        console.error("Burn API Error:", error);
-        return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Error' }, { status: 500 });
     }
+
+    if (!fs.existsSync(videoPath)) {
+        return NextResponse.json({ error: 'Source video not found' }, { status: 404 });
+    }
+
+    if (srtContent) {
+        fs.writeFileSync(srtPath, srtContent);
+        console.log(`[burn] Wrote SRT (${srtContent.length} chars) to ${srtPath}`);
+    } else if (!fs.existsSync(srtPath)) {
+        return NextResponse.json({ error: 'No SRT content provided or found' }, { status: 400 });
+    }
+
+    // --- Set up bundled font for ffmpeg subtitle rendering ---
+    const fontsDir = path.join(baseTempDir, 'fonts');
+    if (!fs.existsSync(fontsDir)) fs.mkdirSync(fontsDir, { recursive: true });
+
+    const fontDest = path.join(fontsDir, 'NotoSans-Regular.ttf');
+    if (!fs.existsSync(fontDest)) {
+        const fontSource = path.join(process.cwd(), 'public', 'fonts', 'NotoSans-Regular.ttf');
+        if (fs.existsSync(fontSource)) {
+            fs.copyFileSync(fontSource, fontDest);
+        } else {
+            // Fallback: fetch from own CDN
+            const origin = req.headers.get('origin') || req.nextUrl.origin;
+            try {
+                const res = await fetch(`${origin}/fonts/NotoSans-Regular.ttf`);
+                if (res.ok) {
+                    fs.writeFileSync(fontDest, Buffer.from(await res.arrayBuffer()));
+                }
+            } catch (e) {
+                console.warn('[burn] Could not fetch font from CDN:', e);
+            }
+        }
+    }
+
+    // --- Stream progress + video binary back to client ---
+    const encoder = new TextEncoder();
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+
+    const sendEvent = (data: Record<string, unknown>) => {
+        return writer.write(encoder.encode(JSON.stringify(data) + '\n'));
+    };
+
+    // Run the burn in the background while streaming progress
+    (async () => {
+        try {
+            await sendEvent({ stage: 'preparing', progress: 0 });
+
+            const enhanceOpts: { targetHeight?: number; fontsDir?: string } = { fontsDir };
+            if (targetHeight) enhanceOpts.targetHeight = Number(targetHeight);
+
+            console.log(`[burn] Starting burn for ${jobId}...${targetHeight ? ` (upscale to ${targetHeight}p)` : ''}`);
+
+            await burnSubtitles(videoPath, srtPath, outputPath, enhanceOpts, (p) => {
+                sendEvent({ stage: 'encoding', progress: Math.round(p.percent) });
+            });
+
+            console.log(`[burn] Finished burning for ${jobId}. Output: ${outputPath}`);
+            await sendEvent({ stage: 'finalizing', progress: 100 });
+            await sendEvent({ done: true });
+
+            // Stream the output video binary
+            const fileBuffer = fs.readFileSync(outputPath);
+            await writer.write(fileBuffer);
+            await writer.close();
+
+            // Clean up the burned file to save disk space
+            try { fs.unlinkSync(outputPath); } catch { /* ignore */ }
+        } catch (err) {
+            console.error('[burn] Error:', err);
+            try {
+                await sendEvent({ stage: 'error', message: err instanceof Error ? err.message : 'Encoding failed' });
+                await writer.close();
+            } catch { /* stream may already be closed */ }
+        }
+    })();
+
+    return new Response(readable, {
+        headers: {
+            'Content-Type': 'application/octet-stream',
+            'Cache-Control': 'no-cache',
+        },
+    });
 }

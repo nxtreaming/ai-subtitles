@@ -118,20 +118,29 @@ export async function burnSubtitles(
     videoPath: string,
     srtPath: string,
     outputPath: string,
-    options?: { targetHeight?: number }
+    options?: { targetHeight?: number; fontsDir?: string },
+    onProgress?: (p: { percent: number }) => void
 ): Promise<void> {
     return new Promise((resolve, reject) => {
         if (!fs.existsSync(videoPath)) return reject(new Error('Video path missing'));
         if (!fs.existsSync(srtPath)) return reject(new Error('SRT path missing'));
 
-        const safeSrtPath = srtPath.replace(/\\/g, '/');
+        const safeSrtPath = srtPath.replace(/\\/g, '/').replace(/:/g, '\\:').replace(/'/g, "'\\''");
         const filters: string[] = [];
 
         if (options?.targetHeight) {
             filters.push(`scale=-2:'if(lt(ih,${options.targetHeight}),${options.targetHeight},ih)':flags=lanczos`);
         }
 
-        filters.push(`subtitles='${safeSrtPath}':force_style='Fontname=Outfit,Fontsize=18,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=3,Outline=2,Shadow=0'`);
+        let subtitleFilter = `subtitles='${safeSrtPath}'`;
+        if (options?.fontsDir) {
+            const safeFontsDir = options.fontsDir.replace(/\\/g, '/').replace(/:/g, '\\:');
+            subtitleFilter += `:fontsdir='${safeFontsDir}'`;
+        }
+        subtitleFilter += `:force_style='Fontname=Noto Sans,Fontsize=20,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=3,Outline=2,Shadow=0,MarginV=25'`;
+        filters.push(subtitleFilter);
+
+        console.log(`[burn] SRT size: ${fs.statSync(srtPath).size} bytes, filter: ${filters.join(',')}`);
 
         ffmpeg(videoPath)
             .outputOptions([
@@ -142,6 +151,9 @@ export async function burnSubtitles(
                 '-pix_fmt yuv420p',
                 '-c:a copy',
             ])
+            .on('progress', (p) => {
+                onProgress?.({ percent: p.percent ?? 0 });
+            })
             .on('error', (err) => {
                 console.error('FFmpeg Burn Error:', err);
                 reject(err);
