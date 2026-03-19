@@ -11,6 +11,7 @@ interface ImportViewProps {
     onNext: () => void;
     setVideoFile: (file: File | null) => void;
     setYoutubeUrl: (url: string) => void;
+    setIsSample: (v: boolean) => void;
 }
 
 /* ── Stagger animation helpers ── */
@@ -85,7 +86,7 @@ const STATS = [
     },
 ];
 
-export default function ImportView({ onNext, setVideoFile, setYoutubeUrl }: ImportViewProps) {
+export default function ImportView({ onNext, setVideoFile, setYoutubeUrl, setIsSample }: ImportViewProps) {
     const [url, setUrl] = useState("");
     const [error, setError] = useState("");
     const heroRef = useRef<HTMLDivElement>(null);
@@ -98,9 +99,10 @@ export default function ImportView({ onNext, setVideoFile, setYoutubeUrl }: Impo
         if (acceptedFiles.length > 0) {
             setVideoFile(acceptedFiles[0]);
             setYoutubeUrl(""); // Clear URL if file uploaded
+            setIsSample(false);
             onNext();
         }
-    }, [setVideoFile, setYoutubeUrl, onNext]);
+    }, [setVideoFile, setYoutubeUrl, setIsSample, onNext]);
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
@@ -132,6 +134,7 @@ export default function ImportView({ onNext, setVideoFile, setYoutubeUrl }: Impo
         setError("");
         setYoutubeUrl(url);
         setVideoFile(null); // Clear file if URL provided
+        setIsSample(false);
         onNext();
     };
 
@@ -292,26 +295,42 @@ export default function ImportView({ onNext, setVideoFile, setYoutubeUrl }: Impo
                                     </motion.p>
                                 )}
                             </form>
+
+                            {/* Divider */}
+                            <div className="relative">
+                                <div className="absolute inset-0 flex items-center">
+                                    <span className="w-full border-t border-border" />
+                                </div>
+                                <div className="relative flex justify-center text-[10px] font-bold uppercase tracking-wider">
+                                    <span className="bg-background px-3 text-muted-foreground">Or try a demo</span>
+                                </div>
+                            </div>
+
+                            {/* Sample video CTA */}
+                            <motion.button
+                                type="button"
+                                onClick={() => {
+                                    const sampleUrl = `${window.location.origin}/sample-demo.mp4`;
+                                    setYoutubeUrl(sampleUrl);
+                                    setVideoFile(null);
+                                    setIsSample(true);
+                                    onNext();
+                                }}
+                                whileHover={{ scale: 1.01 }}
+                                whileTap={{ scale: 0.98 }}
+                                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 hover:bg-primary/10 hover:border-primary/50 transition-all duration-300 text-left group relative z-20"
+                            >
+                                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/15 transition-colors">
+                                    <FileVideo className="w-6 h-6 text-primary" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold text-foreground">Try with a sample video</p>
+                                    <p className="text-xs text-muted-foreground">See how SubStudio works — no upload needed</p>
+                                </div>
+                                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary shrink-0 transition-colors" />
+                            </motion.button>
                         </div>
                     </div>
-                </motion.div>
-
-                {/* Sample video button */}
-                <motion.div variants={childFadeUp} className="mt-8">
-                    <motion.button
-                        type="button"
-                        onClick={() => {
-                            const sampleUrl = `${window.location.origin}/sample-demo.mp4`;
-                            setYoutubeUrl(sampleUrl);
-                            setVideoFile(null);
-                            onNext();
-                        }}
-                        whileTap={{ scale: 0.98 }}
-                        className="text-sm font-medium text-muted-foreground hover:text-foreground inline-flex items-center gap-2 transition-colors border border-transparent hover:border-border hover:bg-muted/50 px-4 py-2 rounded-full relative z-20"
-                    >
-                        <FileVideo className="w-4 h-4" />
-                        Try with a sample video
-                    </motion.button>
                 </motion.div>
             </motion.div>
 

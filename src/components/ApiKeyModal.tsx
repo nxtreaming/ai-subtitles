@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { KeyRound, X, CheckCircle2, ExternalLink } from "lucide-react";
 
-export default function ApiKeyModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+export default function ApiKeyModal({ isOpen, onClose, variant = "default" }: { isOpen: boolean; onClose: () => void; variant?: "default" | "out-of-credits" }) {
     const [apiKey, setApiKey] = useState("");
     const [saved, setSaved] = useState(false);
 
@@ -58,15 +58,32 @@ export default function ApiKeyModal({ isOpen, onClose }: { isOpen: boolean; onCl
                                 initial={{ scale: 0 }}
                                 animate={{ scale: 1 }}
                                 transition={{ type: "spring", stiffness: 400, damping: 15, delay: 0.1 }}
-                                className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary"
+                                className={`w-10 h-10 rounded-full flex items-center justify-center ${variant === "out-of-credits" ? "bg-amber-500/10 text-amber-500" : "bg-primary/10 text-primary"}`}
                             >
                                 <KeyRound className="w-5 h-5" />
                             </motion.div>
                             <div>
-                                <h2 className="text-xl font-semibold tracking-tight">API Key</h2>
-                                <p className="text-sm text-muted-foreground">Enter your Together AI API key for fast transcription.</p>
+                                <h2 className="text-xl font-semibold tracking-tight">
+                                    {variant === "out-of-credits" ? "Add Your API Key" : "API Key"}
+                                </h2>
+                                <p className="text-sm text-muted-foreground">
+                                    {variant === "out-of-credits"
+                                        ? "Keep creating subtitles with your own key."
+                                        : "Enter your Together AI API key for fast transcription."}
+                                </p>
                             </div>
                         </div>
+
+                        {variant === "out-of-credits" && (
+                            <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg px-4 py-3 mb-4">
+                                <p className="text-sm text-amber-600 dark:text-amber-400 font-medium">
+                                    Your free generation has been used.
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Together AI offers free credits when you sign up — enough for hundreds of transcriptions.
+                                </p>
+                            </div>
+                        )}
 
                         <div className="space-y-4">
                             <div className="space-y-2">

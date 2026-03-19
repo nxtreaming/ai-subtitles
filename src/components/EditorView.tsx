@@ -82,6 +82,7 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
     // Video info & enhancement
     const [videoHeight, setVideoHeight] = useState<number>(0);
     const [upscaleTarget, setUpscaleTarget] = useState<number | null>(null);
+    const [videoError, setVideoError] = useState(false);
 
     const videoRef = useRef<HTMLVideoElement>(null);
     const exportRef = useRef<HTMLDivElement>(null);
@@ -466,10 +467,20 @@ export default function EditorView({ onNewProject, jobId, srtContent, setSrtCont
                                 onPlay={() => setIsPlaying(true)}
                                 onPause={() => setIsPlaying(false)}
                                 onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+                                onError={() => setVideoError(true)}
                                 onClick={togglePlay}
                             />
                         ) : (
                             <MonitorPlay className="w-24 h-24 text-muted-foreground/30 absolute z-0" />
+                        )}
+
+                        {/* Video expired overlay */}
+                        {videoError && (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 text-white/70 text-center p-6 z-20">
+                                <MonitorPlay className="w-16 h-16 mb-3 opacity-40" />
+                                <p className="text-sm font-medium">Video session expired</p>
+                                <p className="text-xs text-white/40 mt-1">Subtitle data is still available — export as SRT or VTT</p>
+                            </div>
                         )}
 
                         {/* Subtitle Overlay — style-aware */}

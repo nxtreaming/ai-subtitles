@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle2, Circle, AlertCircle } from "lucide-react";
+import { CheckCircle2, Circle, AlertCircle, KeyRound, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 
@@ -11,6 +11,9 @@ interface ProcessingViewProps {
     setJobId: (id: string) => void;
     setSrtContent: (srt: string) => void;
     setWords: (words: unknown[]) => void;
+    isSample: boolean;
+    onOutOfCredits: () => void;
+    onReset: () => void;
 }
 
 /* ── Animation variants ── */
@@ -48,7 +51,7 @@ const checkPop = {
     },
 };
 
-export default function ProcessingView({ onNext, videoFile, youtubeUrl, setJobId, setSrtContent, setWords }: ProcessingViewProps) {
+export default function ProcessingView({ onNext, videoFile, youtubeUrl, setJobId, setSrtContent, setWords, isSample, onOutOfCredits, onReset }: ProcessingViewProps) {
     const [currentStage, setCurrentStage] = useState(0);
     const [error, setError] = useState<string | null>(null);
     const hasStarted = useRef(false);
@@ -69,8 +72,10 @@ export default function ProcessingView({ onNext, videoFile, youtubeUrl, setJobId
                 const apiKey = localStorage.getItem("substudio_together_api_key") || "";
                 const freeUsed = localStorage.getItem("substudio_free_used") === "true";
 
-                if (!apiKey && freeUsed) {
-                    throw new Error("Free generation used! Please click the Key icon (top right) to enter your Together API Key.");
+                if (!apiKey && freeUsed && !isSample) {
+                    setError("out-of-credits");
+                    onOutOfCredits();
+                    return;
                 }
 
                 setError(null);
@@ -140,7 +145,7 @@ export default function ProcessingView({ onNext, videoFile, youtubeUrl, setJobId
                 setSrtContent(transcribeData.srtContent);
                 setWords(transcribeData.words);
 
-                if (!apiKey) {
+                if (!apiKey && !isSample) {
                     localStorage.setItem("substudio_free_used", "true");
                 }
 
@@ -175,7 +180,17 @@ export default function ProcessingView({ onNext, videoFile, youtubeUrl, setJobId
                     {/* Main Hero Animation — different from stage spinners */}
                     <div className="relative mx-auto w-28 h-28 flex items-center justify-center">
                         <AnimatePresence mode="wait">
-                            {error ? (
+                            {error === "out-of-credits" ? (
+                                <motion.div
+                                    key="credits"
+                                    initial={{ scale: 0, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                                    className="w-20 h-20 rounded-full bg-amber-500/10 flex items-center justify-center"
+                                >
+                                    <KeyRound className="w-10 h-10 text-amber-500" />
+                                </motion.div>
+                            ) : error ? (
                                 <motion.div
                                     key="error"
                                     initial={{ scale: 0, opacity: 0 }}
@@ -229,7 +244,7 @@ export default function ProcessingView({ onNext, videoFile, youtubeUrl, setJobId
                                 transition={{ duration: 0.3 }}
                                 className="text-2xl font-bold tracking-tight"
                             >
-                                {error ? "Processing Failed" : isComplete ? "Ready!" : "Processing Video"}
+                                {error === "out-of-credits" ? "Free Credit Used" : error ? "Processing Failed" : isComplete ? "Ready!" : "Processing Video"}
                             </motion.h2>
                         </AnimatePresence>
                         <AnimatePresence mode="wait">
@@ -241,13 +256,40 @@ export default function ProcessingView({ onNext, videoFile, youtubeUrl, setJobId
                                 transition={{ duration: 0.3, delay: 0.05 }}
                                 className="text-muted-foreground text-base max-w-sm mx-auto"
                             >
-                                {error
-                                    ? error
-                                    : isComplete
-                                        ? "Opening editor..."
-                                        : "Sit tight — our AI is analyzing your video..."}
+                                {error === "out-of-credits"
+                                    ? "Add a Together AI API key to keep creating subtitles — signing up is free and takes under a minute."
+                                    : error
+                                        ? error
+                                        : isComplete
+                                            ? "Opening editor..."
+                                            : "Sit tight — our AI is analyzing your video..."}
                             </motion.p>
                         </AnimatePresence>
+
+                        {/* Out-of-credits action buttons */}
+                        {error === "out-of-credits" && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.3, delay: 0.15 }}
+                                className="flex items-center justify-center gap-3 pt-2"
+                            >
+                                <button
+                                    onClick={onReset}
+                                    className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-4 py-2 rounded-lg hover:bg-muted/50"
+                                >
+                                    <ArrowLeft className="w-3.5 h-3.5" />
+                                    Go Back
+                                </button>
+                                <button
+                                    onClick={onOutOfCredits}
+                                    className="inline-flex items-center gap-1.5 text-sm font-medium bg-foreground text-background px-4 py-2 rounded-lg hover:opacity-90 transition-opacity"
+                                >
+                                    <KeyRound className="w-3.5 h-3.5" />
+                                    Add API Key
+                                </button>
+                            </motion.div>
+                        )}
                     </div>
 
                     {/* Together AI branding */}

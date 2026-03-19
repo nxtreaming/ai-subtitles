@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import ImportView from "./ImportView";
 import ProcessingView from "./ProcessingView";
@@ -19,6 +20,19 @@ export interface HistoryEntry {
     title: string;
     date: string;
     stylePreset: string;
+}
+
+/* ── Job data persistence for URL routing ── */
+const JOB_PREFIX = "substudio_job_";
+
+function saveJobData(jId: string, data: { srtContent: string; words: unknown[]; stylePreset: string; source: string }) {
+    try { localStorage.setItem(`${JOB_PREFIX}${jId}`, JSON.stringify(data)); } catch { /* quota exceeded */ }
+}
+
+function loadJobData(jId: string): { srtContent: string; words: unknown[]; stylePreset: string; source: string } | null {
+    const raw = localStorage.getItem(`${JOB_PREFIX}${jId}`);
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch { return null; }
 }
 
 const TOGETHER_TIPS = [
@@ -67,8 +81,48 @@ export default function SubStudioApp() {
     const [srtContent, setSrtContent] = useState<string>("");
     const [words, setWords] = useState<unknown[]>([]);
     const [stylePreset, setStylePreset] = useState<string>("tiktok");
+    const [isSample, setIsSample] = useState(false);
+    const [apiKeyModalVariant, setApiKeyModalVariant] = useState<"default" | "out-of-credits">("default");
 
     const historyRef = useRef<HTMLDivElement>(null);
+    const searchParams = useSearchParams();
+
+    // Restore job from URL on mount
+    useEffect(() => {
+        const urlJobId = searchParams.get("jobId");
+        if (!urlJobId) return;
+        const data = loadJobData(urlJobId);
+        if (data) {
+            setJobId(urlJobId);
+            setSrtContent(data.srtContent);
+            setWords(data.words);
+            setStylePreset(data.stylePreset);
+            setStep("editor");
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Save job data + update URL when entering editor
+    useEffect(() => {
+        if (step === "editor" && jobId && srtContent) {
+            const source = videoFile?.name || youtubeUrl || "Unknown";
+            saveJobData(jobId, { srtContent, words, stylePreset, source });
+            window.history.replaceState(null, "", `?jobId=${jobId}`);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [step, jobId]);
+
+    // Handle browser back button
+    useEffect(() => {
+        const handlePopState = () => {
+            const params = new URLSearchParams(window.location.search);
+            if (!params.get("jobId")) {
+                setStep("import");
+            }
+        };
+        window.addEventListener("popstate", handlePopState);
+        return () => window.removeEventListener("popstate", handlePopState);
+    }, []);
 
     // Load history from localStorage
     useEffect(() => {
@@ -163,6 +217,11 @@ export default function SubStudioApp() {
         localStorage.removeItem("substudio_history");
     };
 
+    const handleOutOfCredits = () => {
+        setApiKeyModalVariant("out-of-credits");
+        setIsApiKeyOpen(true);
+    };
+
     const resetApp = () => {
         setVideoFile(null);
         setYoutubeUrl("");
@@ -170,7 +229,9 @@ export default function SubStudioApp() {
         setSrtContent("");
         setWords([]);
         setStylePreset("tiktok");
+        setIsSample(false);
         setStep("import");
+        window.history.pushState(null, "", "/");
     };
 
     const handleProcessingComplete = () => {
@@ -356,7 +417,7 @@ export default function SubStudioApp() {
 
                     <Tooltip label="API Key Settings">
                         <button
-                            onClick={() => setIsApiKeyOpen(true)}
+                            onClick={() => { setApiKeyModalVariant("default"); setIsApiKeyOpen(true); }}
                             className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-lg transition-all duration-200"
                         >
                             <KeyRound className="w-[18px] h-[18px]" />
@@ -394,6 +455,7 @@ export default function SubStudioApp() {
                                 onNext={() => setStep("processing")}
                                 setVideoFile={setVideoFile}
                                 setYoutubeUrl={setYoutubeUrl}
+                                setIsSample={setIsSample}
                             />
                         </motion.div>
                     )}
@@ -413,6 +475,9 @@ export default function SubStudioApp() {
                                 setJobId={setJobId}
                                 setSrtContent={setSrtContent}
                                 setWords={setWords}
+                                isSample={isSample}
+                                onOutOfCredits={handleOutOfCredits}
+                                onReset={resetApp}
                             />
                         </motion.div>
                     )}
@@ -476,7 +541,7 @@ export default function SubStudioApp() {
                 )}
             </AnimatePresence>
 
-            <ApiKeyModal isOpen={isApiKeyOpen} onClose={() => setIsApiKeyOpen(false)} />
+            <ApiKeyModal isOpen={isApiKeyOpen} onClose={() => { setIsApiKeyOpen(false); setApiKeyModalVariant("default"); }} variant={apiKeyModalVariant} />
         </div>
     );
 }
