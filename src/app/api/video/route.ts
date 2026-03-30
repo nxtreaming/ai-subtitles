@@ -3,6 +3,8 @@ import { rateLimit } from '@/lib/rate-limit';
 import fs from 'fs';
 import path from 'path';
 
+export const dynamic = 'force-dynamic';
+
 const limiter = rateLimit({ interval: 60_000, limit: 30 });
 
 export async function GET(req: NextRequest) {
