@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
                 console.log(`[burn] Starting burn for ${jobId}...${targetHeight ? ` (upscale to ${targetHeight}p)` : ''}`);
 
                 await burnSubtitles(videoPath, srtPath, outputPath, enhanceOpts, (p) => {
-                    sendEvent({ stage: 'encoding', progress: Math.round(p.percent) });
+                    sendEvent({ stage: 'encoding', progress: Math.round(p.percent || 0) });
                 });
 
                 console.log(`[burn] Finished burning for ${jobId}. Output: ${outputPath}`);
@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
 
                 // Stream the output video binary
                 const fileBuffer = fs.readFileSync(outputPath);
-                await writer.write(fileBuffer);
+                await writer.write(new Uint8Array(fileBuffer.buffer, fileBuffer.byteOffset, fileBuffer.byteLength));
                 await writer.close();
 
                 // Clean up the burned file to save disk space

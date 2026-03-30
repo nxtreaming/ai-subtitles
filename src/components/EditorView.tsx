@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, ListTodo, AlertTriangle, MonitorPlay, Download, ChevronDown, Loader2, CheckCircle2, Search, Copy, Check, Sparkles } from "lucide-react";
+import { Play, Pause, ListTodo, AlertTriangle, MonitorPlay, Download, ChevronDown, Loader2, CheckCircle2, Search, Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Subtitle {
@@ -77,9 +77,16 @@ export default function EditorView({ onNewProject: _onNewProject, jobId, srtCont
     // Export dropdown state
     const [isExportOpen, setIsExportOpen] = useState(false);
     const [downloading, setDownloading] = useState<string | null>(null);
-    const [exportSuccess, setExportSuccess] = useState<string | null>(null);
-    const [exportError, setExportError] = useState<string | null>(null);
     const [burnProgress, setBurnProgress] = useState<{ stage: string; progress: number } | null>(null);
+
+    // Toast notifications
+    const [toasts, setToasts] = useState<Array<{ id: number; message: string; type: 'success' | 'error' }>>([]);
+    const toastId = useRef(0);
+    const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+        const id = ++toastId.current;
+        setToasts(prev => [...prev, { id, message, type }]);
+        setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
+    };
 
     // Video info & enhancement
     const [videoHeight, setVideoHeight] = useState<number>(0);
@@ -297,19 +304,17 @@ export default function EditorView({ onNewProject: _onNewProject, jobId, srtCont
     const handleDownload = async (type: string) => {
         try {
             setDownloading(type);
-            setExportError(null);
-            setExportSuccess(null);
 
             const latestSrt = syncSrtContent();
 
             if (type === "srt") {
                 downloadStringAsFile(latestSrt, `substudio_${jobId}.srt`, "text/plain");
-                setExportSuccess("SRT downloaded!");
+                showToast("SRT downloaded!");
             }
             else if (type === "vtt") {
                 const vttContent = convertSrtToVtt(latestSrt);
                 downloadStringAsFile(vttContent, `substudio_${jobId}.vtt`, "text/vtt");
-                setExportSuccess("VTT downloaded!");
+                showToast("VTT downloaded!");
             }
             else if (type === "mp4") {
                 setBurnProgress({ stage: "preparing", progress: 0 });
@@ -390,14 +395,12 @@ export default function EditorView({ onNewProject: _onNewProject, jobId, srtCont
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(blobUrl);
-                setExportSuccess("Video exported!");
+                showToast("Video exported!");
                 setBurnProgress(null);
             }
-
-            setTimeout(() => setExportSuccess(null), 3000);
         } catch (err: unknown) {
             console.error("Export Error:", err);
-            setExportError((err as Error).message || "An unknown error occurred");
+            showToast((err as Error).message || "An unknown error occurred", 'error');
         } finally {
             setDownloading(null);
             setBurnProgress(null);
@@ -691,39 +694,13 @@ export default function EditorView({ onNewProject: _onNewProject, jobId, srtCont
                                     transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
                                     className="absolute right-0 top-full mt-2 w-72 bg-card border border-border rounded-xl shadow-2xl z-50 overflow-hidden"
                                 >
-                                    {/* Success / Error banner */}
-                                    <AnimatePresence>
-                                        {exportSuccess && (
-                                            <motion.div
-                                                initial={{ opacity: 0, height: 0 }}
-                                                animate={{ opacity: 1, height: "auto" }}
-                                                exit={{ opacity: 0, height: 0 }}
-                                                className="px-4 py-2.5 bg-green-500/10 border-b border-green-500/20 flex items-center gap-2 text-green-500"
-                                            >
-                                                <CheckCircle2 className="w-4 h-4" />
-                                                <span className="text-sm font-medium">{exportSuccess}</span>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                    <AnimatePresence>
-                                        {exportError && (
-                                            <motion.div
-                                                initial={{ opacity: 0, height: 0 }}
-                                                animate={{ opacity: 1, height: "auto" }}
-                                                exit={{ opacity: 0, height: 0 }}
-                                                className="px-4 py-2.5 bg-destructive/10 border-b border-destructive/20 flex items-center gap-2 text-destructive"
-                                            >
-                                                <AlertTriangle className="w-4 h-4" />
-                                                <span className="text-sm font-medium truncate">{exportError}</span>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-
                                     <div className="py-1">
                                         {/* SRT Download */}
-                                        <button
+                                        <motion.button
                                             onClick={() => handleDownload("srt")}
                                             disabled={downloading !== null}
+                                            whileTap={{ scale: 0.97, backgroundColor: "rgba(128,128,128,0.1)" }}
+                                            transition={{ duration: 0.1 }}
                                             className="w-full px-4 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors disabled:opacity-50 text-left"
                                         >
                                             <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
@@ -742,12 +719,14 @@ export default function EditorView({ onNewProject: _onNewProject, jobId, srtCont
                                                 <p className="text-[11px] text-muted-foreground">Universal — YouTube, Premiere, etc.</p>
                                             </div>
                                             {downloading === "srt" && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
-                                        </button>
+                                        </motion.button>
 
                                         {/* VTT Download */}
-                                        <button
+                                        <motion.button
                                             onClick={() => handleDownload("vtt")}
                                             disabled={downloading !== null}
+                                            whileTap={{ scale: 0.97, backgroundColor: "rgba(128,128,128,0.1)" }}
+                                            transition={{ duration: 0.1 }}
                                             className="w-full px-4 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors disabled:opacity-50 text-left"
                                         >
                                             <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0">
@@ -768,14 +747,16 @@ export default function EditorView({ onNewProject: _onNewProject, jobId, srtCont
                                                 <p className="text-[11px] text-muted-foreground">Web-ready — HTML5 players</p>
                                             </div>
                                             {downloading === "vtt" && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
-                                        </button>
+                                        </motion.button>
 
                                         <div className="mx-4 my-1 border-t border-border/50" />
 
                                         {/* Burned MP4 */}
-                                        <button
+                                        <motion.button
                                             onClick={() => handleDownload("mp4")}
                                             disabled={downloading !== null}
+                                            whileTap={{ scale: 0.97, backgroundColor: "rgba(128,128,128,0.1)" }}
+                                            transition={{ duration: 0.1 }}
                                             className="w-full px-4 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors disabled:opacity-50 text-left"
                                         >
                                             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -795,19 +776,29 @@ export default function EditorView({ onNewProject: _onNewProject, jobId, srtCont
                                                 {burnProgress && downloading === "mp4" ? (
                                                     <div className="mt-1 space-y-1">
                                                         <div className="flex items-center justify-between">
-                                                            <span className="text-[11px] text-muted-foreground">
-                                                                {burnProgress.stage === "preparing" && "Preparing..."}
-                                                                {burnProgress.stage === "encoding" && `Encoding video... ${Math.round(burnProgress.progress)}%`}
-                                                                {burnProgress.stage === "finalizing" && "Finalizing..."}
+                                                            <span className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                                                                {burnProgress.stage === "preparing" && (
+                                                                    <><Loader2 className="w-3 h-3 animate-spin" />Preparing...</>
+                                                                )}
+                                                                {burnProgress.stage === "encoding" && (
+                                                                    <>{burnProgress.progress < 1 && <Loader2 className="w-3 h-3 animate-spin" />}Encoding video... {Math.round(burnProgress.progress)}%</>
+                                                                )}
+                                                                {burnProgress.stage === "finalizing" && (
+                                                                    <><Loader2 className="w-3 h-3 animate-spin" />Finalizing...</>
+                                                                )}
                                                             </span>
                                                         </div>
                                                         <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
-                                                            <motion.div
-                                                                className="h-full bg-primary rounded-full"
-                                                                initial={{ width: "0%" }}
-                                                                animate={{ width: `${burnProgress.stage === "preparing" ? 3 : burnProgress.progress}%` }}
-                                                                transition={{ duration: 0.3, ease: "easeOut" }}
-                                                            />
+                                                            {burnProgress.stage === "preparing" ? (
+                                                                <div className="h-full w-1/3 bg-primary/50 rounded-full animate-pulse" />
+                                                            ) : (
+                                                                <motion.div
+                                                                    className="h-full bg-primary rounded-full"
+                                                                    initial={{ width: "0%" }}
+                                                                    animate={{ width: `${burnProgress.progress}%` }}
+                                                                    transition={{ duration: 0.3, ease: "easeOut" }}
+                                                                />
+                                                            )}
                                                         </div>
                                                     </div>
                                                 ) : (
@@ -815,7 +806,7 @@ export default function EditorView({ onNewProject: _onNewProject, jobId, srtCont
                                                 )}
                                             </div>
                                             {downloading === "mp4" && !burnProgress && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
-                                        </button>
+                                        </motion.button>
 
                                         {/* Upscale option — only show if video is below 1080p */}
                                         {videoHeight > 0 && videoHeight < 1080 && (
@@ -823,7 +814,6 @@ export default function EditorView({ onNewProject: _onNewProject, jobId, srtCont
                                                 <div className="mx-4 my-1 border-t border-border/50" />
                                                 <div className="px-4 py-3">
                                                     <div className="flex items-center gap-2 mb-2">
-                                                        <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                                                         <span className="text-xs font-semibold text-foreground">Enhance Resolution</span>
                                                         <span className="text-[10px] text-muted-foreground ml-auto">{videoHeight}p current</span>
                                                     </div>
@@ -951,6 +941,33 @@ export default function EditorView({ onNewProject: _onNewProject, jobId, srtCont
                     )}
                 </div>
             </motion.div>
+
+            {/* Toast notifications */}
+            <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-2 pointer-events-none">
+                <AnimatePresence>
+                    {toasts.map(toast => (
+                        <motion.div
+                            key={toast.id}
+                            initial={{ opacity: 0, y: 16, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                            className={cn(
+                                "pointer-events-auto flex items-center gap-2.5 px-4 py-2.5 rounded-xl border shadow-lg backdrop-blur-sm text-sm font-medium",
+                                toast.type === 'success'
+                                    ? "bg-card/90 border-green-500/20 text-green-500"
+                                    : "bg-card/90 border-destructive/20 text-destructive"
+                            )}
+                        >
+                            {toast.type === 'success'
+                                ? <CheckCircle2 className="w-4 h-4 shrink-0" />
+                                : <AlertTriangle className="w-4 h-4 shrink-0" />
+                            }
+                            <span className="truncate max-w-xs">{toast.message}</span>
+                        </motion.div>
+                    ))}
+                </AnimatePresence>
+            </div>
         </div>
     );
 }

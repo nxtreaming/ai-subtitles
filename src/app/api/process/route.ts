@@ -62,23 +62,25 @@ export async function POST(req: NextRequest) {
 
         } else if (contentType.includes('application/json')) {
             const body = await req.json();
-            const { youtubeUrl } = body;
+            const { youtubeUrl, blobUrl } = body;
+            const mediaUrl = blobUrl || youtubeUrl;
 
-            if (!youtubeUrl) {
+            if (!mediaUrl) {
                 return NextResponse.json({ error: 'No URL provided' }, { status: 400 });
             }
 
-            // Detect URL type: direct media file, or YouTube
-            const urlLower = youtubeUrl.toLowerCase();
-            const isDirectMedia = /\.(mp4|webm|mov|mp3|wav)(\?.*)?$/i.test(urlLower);
+            // Detect URL type: direct media file, blob upload, or YouTube
+            const urlLower = mediaUrl.toLowerCase();
+            const isBlobUpload = urlLower.includes('.blob.vercel-storage.com') || urlLower.includes('.blob.core.windows.net');
+            const isDirectMedia = /\.(mp4|webm|mov|mp3|wav)(\?.*)?$/i.test(urlLower) || isBlobUpload;
 
             if (isDirectMedia) {
                 // Determine extension from URL
                 const urlExt = urlLower.match(/\.(mp4|webm|mov|mp3|wav)/)?.[1] || 'mp4';
                 const filePath = path.join(baseTempDir, `${jobId}.${urlExt}`);
 
-                console.log(`Fetching direct URL for job ${jobId}...`);
-                const response = await fetch(youtubeUrl, { cache: 'no-store' });
+                console.log(`Fetching ${isBlobUpload ? 'blob' : 'direct'} URL for job ${jobId}...`);
+                const response = await fetch(mediaUrl, { cache: 'no-store' });
                 if (!response.ok) {
                     throw new Error(`Failed to fetch media: ${response.statusText}`);
                 }
@@ -99,10 +101,10 @@ export async function POST(req: NextRequest) {
 
                 return NextResponse.json({ jobId, status: 'success', type: 'url', ext: urlExt });
 
-            } else if (isYoutubeUrl(youtubeUrl)) {
+            } else if (isYoutubeUrl(mediaUrl)) {
                 const videoPath = path.join(baseTempDir, `${jobId}.mp4`);
                 console.log(`Downloading YouTube video for job ${jobId}...`);
-                await downloadYoutubeVideo(youtubeUrl, videoPath);
+                await downloadYoutubeVideo(mediaUrl, videoPath);
 
                 return NextResponse.json({ jobId, status: 'success', type: 'url', ext: 'mp4' });
 

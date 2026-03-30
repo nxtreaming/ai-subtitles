@@ -182,9 +182,11 @@ export async function burnSubtitles(
                 '-preset medium',
                 '-pix_fmt yuv420p',
                 '-c:a copy',
+                '-movflags +faststart',
             ])
             .on('progress', (p) => {
-                onProgress?.({ percent: p.percent ?? 0 });
+                const pct = typeof p.percent === 'number' && !isNaN(p.percent) ? p.percent : 0;
+                onProgress?.({ percent: pct });
             })
             .on('error', (err) => {
                 console.error('FFmpeg Burn Error:', err);

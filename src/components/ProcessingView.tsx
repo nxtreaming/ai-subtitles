@@ -84,12 +84,33 @@ export default function ProcessingView({ onNext, videoFile, youtubeUrl, setJobId
                 // Stage 0: Ingest Video
                 let processResponse;
                 if (videoFile) {
-                    const formData = new FormData();
-                    formData.append("file", videoFile);
-                    processResponse = await fetch("/api/process", {
-                        method: "POST",
-                        body: formData,
-                    });
+                    // Try Vercel Blob upload first (bypasses Vercel's 4.5MB body limit)
+                    let blobUrl: string | null = null;
+                    try {
+                        const { upload } = await import('@vercel/blob/client');
+                        const blob = await upload(videoFile.name, videoFile, {
+                            access: 'public',
+                            handleUploadUrl: '/api/upload',
+                        });
+                        blobUrl = blob.url;
+                    } catch {
+                        // Vercel Blob not configured — fall back to direct upload
+                    }
+
+                    if (blobUrl) {
+                        processResponse = await fetch("/api/process", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ blobUrl }),
+                        });
+                    } else {
+                        const formData = new FormData();
+                        formData.append("file", videoFile);
+                        processResponse = await fetch("/api/process", {
+                            method: "POST",
+                            body: formData,
+                        });
+                    }
                 } else if (youtubeUrl) {
                     processResponse = await fetch("/api/process", {
                         method: "POST",
