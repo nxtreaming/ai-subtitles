@@ -189,10 +189,6 @@ export default function ImportView({ onNext, setVideoFile, setMediaUrl, setIsSam
                     className="absolute top-[-10%] left-[-10%] w-[30%] h-[30%] rounded-full bg-muted/40 blur-[100px]"
                     style={{ animation: "float 8s ease-in-out infinite" }}
                 />
-                <div
-                    className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] rounded-full bg-muted/20 blur-[100px]"
-                    style={{ animation: "float 10s ease-in-out 2s infinite" }}
-                />
             </div>
 
             {/* Hero Section */}
@@ -427,24 +423,20 @@ export default function ImportView({ onNext, setVideoFile, setMediaUrl, setIsSam
 
                     {/* Stats cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-12 sm:mt-16 w-full max-w-3xl">
-                        {STATS.map((stat, i) => (
-                            <motion.div
+                        {STATS.map((stat) => (
+                            <div
                                 key={stat.label}
-                                initial={{ opacity: 0, y: 16, scale: 0.95 }}
-                                whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                                viewport={{ once: true, margin: "-40px" }}
-                                transition={{ duration: 0.5, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
-                                className="group relative overflow-hidden rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5 transition-all duration-500 hover:border-border hover:shadow-xl hover:shadow-black/25"
+                                className="group relative overflow-hidden rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5 transition-all duration-200 hover:border-border hover:shadow-xl hover:shadow-black/25"
                             >
                                 {/* Gradient accent */}
                                 <div className={cn(
-                                    "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br",
+                                    "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-gradient-to-br",
                                     stat.gradient
                                 )} />
 
                                 <div className="relative z-10">
                                     <div className={cn(
-                                        "w-9 h-9 rounded-[10px] p-[2px] mb-3 bg-gradient-to-br shrink-0 group-hover:shadow-lg transition-shadow",
+                                        "w-9 h-9 rounded-[10px] p-[2px] mb-3 bg-gradient-to-br shrink-0 group-hover:shadow-lg transition-shadow duration-200",
                                         stat.outerGradient
                                     )}>
                                         <div className="w-full h-full rounded-[8px] bg-background flex items-center justify-center overflow-hidden">
@@ -461,7 +453,7 @@ export default function ImportView({ onNext, setVideoFile, setMediaUrl, setIsSam
                                         {stat.description}
                                     </div>
                                 </div>
-                            </motion.div>
+                            </div>
                         ))}
                     </div>
                 </motion.div>
