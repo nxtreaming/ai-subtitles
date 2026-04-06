@@ -2,8 +2,6 @@
 
 Upload a video or paste a direct media link to instantly create accurate, timed subtitles. Edit, style, and export captions for any platform. Powered by [Together AI](https://together.ai).
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Luffixos/ai-subtitles&env=TOGETHER_API_KEY&project-name=substudio&repo-name=substudio)
-
 [![SubStudio](./public/sub-studio-OG.png)](https://substudio.vercel.app)
 
 ## How it works
@@ -59,7 +57,7 @@ The app will be available at `http://localhost:3000`.
 
 Deploy your own instance using [Vercel](https://vercel.com):
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Luffixos/ai-subtitles&env=TOGETHER_API_KEY&project-name=substudio&repo-name=substudio)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/nutlope/ai-subtitles&env=TOGETHER_API_KEY&project-name=substudio&repo-name=substudio)
 
 ## Tech stack
 
