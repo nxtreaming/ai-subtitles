@@ -1,6 +1,6 @@
 # [SubStudio](https://substudio.vercel.app) — generate perfect subtitles with AI
 
-Upload a video or paste a direct media link to instantly create accurate, timed subtitles. Edit, style, and export captions for any platform. Powered by [Together AI](https://together.ai).
+Upload a video or paste a direct media link to instantly create accurate, timed subtitles. Edit, style, and export captions for any platform. Powered by [Together AI](https://together.ai)
 
 [![SubStudio](./public/sub-studio-OG.png)](https://substudio.vercel.app)
 
