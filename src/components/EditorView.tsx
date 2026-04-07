@@ -379,6 +379,7 @@ export default function EditorView({ onNewProject: _onNewProject, jobId, srtCont
     };
 
     const handleDownload = async (type: string) => {
+        let simInterval: ReturnType<typeof setInterval> | null = null;
         try {
             setDownloading(type);
 
@@ -395,6 +396,16 @@ export default function EditorView({ onNewProject: _onNewProject, jobId, srtCont
             }
             else if (type === "mp4") {
                 setBurnProgress({ stage: "preparing", progress: 0 });
+
+                // Simulated progress — FFmpeg often reports 0% with complex filters,
+                // so we show smooth movement to keep users informed something is happening.
+                let simulated = 0;
+                let hasRealProgress = false;
+                simInterval = setInterval(() => {
+                    if (hasRealProgress) return;
+                    simulated += (85 - simulated) * 0.04;
+                    setBurnProgress(prev => prev ? { ...prev, progress: Math.round(simulated) } : prev);
+                }, 500);
 
                 const res = await fetch("/api/burn", {
                     method: "POST",
@@ -453,13 +464,20 @@ export default function EditorView({ onNewProject: _onNewProject, jobId, srtCont
                                 break;
                             }
                             if (data.stage === "error") throw new Error(data.message || "Encoding failed");
-                            setBurnProgress({ stage: data.stage || "encoding", progress: data.progress ?? 0 });
+                            if (data.progress > 0) {
+                                hasRealProgress = true;
+                                setBurnProgress({ stage: data.stage || "encoding", progress: data.progress });
+                            } else {
+                                setBurnProgress(prev => prev ? { ...prev, stage: data.stage || "encoding" } : prev);
+                            }
                         } catch (e) {
                             if (e instanceof SyntaxError) continue;
                             throw e;
                         }
                     }
                 }
+
+                clearInterval(simInterval);
 
                 const blob = new Blob(binaryChunks as BlobPart[], { type: "video/mp4" });
                 if (blob.size === 0) throw new Error("Encoded video is empty");
@@ -479,6 +497,7 @@ export default function EditorView({ onNewProject: _onNewProject, jobId, srtCont
             console.error("Export Error:", err);
             showToast((err as Error).message || "An unknown error occurred", 'error');
         } finally {
+            if (simInterval) clearInterval(simInterval);
             setDownloading(null);
             setBurnProgress(null);
         }
